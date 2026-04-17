@@ -51,9 +51,25 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
     
-    /* Shift Sidebar Content Up */
+    /* Optimize Sidebar Space & Remove Faltu Gaps */
+    [data-testid="stSidebarHeader"] {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0rem !important;
+        min-height: auto !important;
+    }
     [data-testid="stSidebarUserContent"] {
-        padding-top: 1rem !important;
+        padding-top: 0rem !important;
+    }
+    [data-testid="stSidebarUserContent"] h1, 
+    [data-testid="stSidebarUserContent"] h2, 
+    [data-testid="stSidebarUserContent"] h3 {
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+    hr {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -150,7 +166,7 @@ if check_password():
         """, unsafe_allow_html=True)
     
     # --- SIDEBAR ---
-    st.sidebar.markdown("<div style='margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='margin-top: -10px; margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
     st.sidebar.title("Navigations")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     
