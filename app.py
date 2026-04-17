@@ -274,7 +274,7 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Google Sheet (Check if the link is accessible to anyone): {e}")
+            st.error(f"Failed to load Overall Spends Google Sheet. Please check if the link is accessible to anyone: {e}")
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
@@ -285,7 +285,7 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Devender Spends Sheet: {e}")
+            st.error(f"Failed to load Devender Spends Sheet. Please check permissions: {e}")
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
@@ -296,7 +296,7 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Enrolled Data Sheet: {e}")
+            st.error(f"Failed to load Enrolled Data Sheet. Please check permissions: {e}")
             return pd.DataFrame()
 
     # Call functions with current user to maintain strict DB rules
@@ -419,7 +419,7 @@ if check_password():
                         "Hyperlap Universities": uni,
                         "Lead Received": lead_received,
                         "Facebook": facebook_count,
-                        "Google": google_count,
+                        "Google": Google_count,
                         "LinkedIn": linkedin_count,
                         "Junk SM": junk_sm,
                         "Junk SM %": junk_pct,
@@ -484,22 +484,22 @@ if check_password():
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
-                # Google Sheet filtering logic
-                if not gs_data.empty:
-                    gs_data['Day'] = pd.to_datetime(gs_data['Day'], errors='coerce').dt.date
-                    gs_data['Cost'] = pd.to_numeric(gs_data['Cost'], errors='coerce').fillna(0)
+                # Google Sheet filtering logic (Safe check for columns)
+                if not gs_data.empty and all(col in gs_data.columns for col in ['Day', 'Cost', 'Campaign', 'Source']):
+                    gs_data_safe = gs_data.copy()
+                    gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
+                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
                     
-                    gs_mask = (gs_data['Day'] >= start_date) & (gs_data['Day'] <= end_date)
-                    gs_filtered = gs_data[gs_mask].copy()
+                    gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
+                    gs_filtered = gs_data_safe[gs_mask].copy()
                     
-                    # --- NEW LOGIC: Map Dashboard Source to Google Sheet Source ---
+                    # --- Map Dashboard Source to Google Sheet Source ---
                     if source_filter != "All":
                         if source_filter == "GOOGLE":
                             gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
                         elif source_filter == "FACEBOOK":
                             gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']
                         elif source_filter == "LINKEDIN":
-                            # Safe fallback for LinkedIn
                             gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]
                     
                     # Extract unique campaigns directly from the dynamically filtered Google Sheet
@@ -671,7 +671,7 @@ if check_password():
                 daily_report_data.append({
                     "HYPERLAP_UNIVERSITY_NAME": display_name,
                     "GOOGLE-DEVENDER": google_dev,
-                    "META-DEVENDER": meta_dev, # Fixed spelling from DEVENDAR to match screenshot & tag
+                    "META-DEVENDER": meta_dev, 
                     "GOOGLE INHOUSE": google_inhouse,
                     "META INHOUSE": meta_inhouse,
                     "LINKEDIN INHOUSE": linkedin_inhouse,
@@ -703,36 +703,43 @@ if check_password():
                 # Fetch dynamically valid universities from filtered dataset to ensure correct matching
                 valid_unis = filtered_data['Hyperlap_University_Name'].dropna().unique()
 
-                # 2. Setup Google Sheet 1 (Inhouse Spends) safely
+                # 2. Setup Google Sheet 1 (Inhouse Spends) safely with Column Checks
                 gs_inhouse_filtered = pd.DataFrame()
-                if not gs_data.empty:
+                if not gs_data.empty and 'Day' in gs_data.columns:
                     gs_data_safe = gs_data.copy()
                     gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
-                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
+                    if 'Cost' in gs_data_safe.columns:
+                        gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
                     gs_inhouse_filtered = gs_data_safe[(gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)]
 
-                # 3. Setup Google Sheet 2 (Devender Spends) safely
+                # 3. Setup Google Sheet 2 (Devender Spends) safely with Column Checks
                 gs_dev_filtered = pd.DataFrame()
-                if not devender_data.empty:
+                if not devender_data.empty and 'Date' in devender_data.columns:
                     dev_data_safe = devender_data.copy()
                     dev_data_safe['Date'] = pd.to_datetime(dev_data_safe['Date'], errors='coerce').dt.date
-                    dev_data_safe['Google Spend'] = pd.to_numeric(dev_data_safe['Google Spend'], errors='coerce').fillna(0)
-                    dev_data_safe['Facebook Spend'] = pd.to_numeric(dev_data_safe['Facebook Spend'], errors='coerce').fillna(0)
+                    if 'Google Spend' in dev_data_safe.columns:
+                        dev_data_safe['Google Spend'] = pd.to_numeric(dev_data_safe['Google Spend'], errors='coerce').fillna(0)
+                    if 'Facebook Spend' in dev_data_safe.columns:
+                        dev_data_safe['Facebook Spend'] = pd.to_numeric(dev_data_safe['Facebook Spend'], errors='coerce').fillna(0)
                     gs_dev_filtered = dev_data_safe[(dev_data_safe['Date'] >= start_date) & (dev_data_safe['Date'] <= end_date)]
 
-                # 4. Setup Google Sheet 3 (Enrolled Data) safely
+                # 4. Setup Google Sheet 3 (Enrolled Data) safely with Column Checks
                 enrolled_filtered = pd.DataFrame()
-                if not enrolled_data.empty:
+                if not enrolled_data.empty and 'Converted Date' in enrolled_data.columns:
                     enr_data_safe = enrolled_data.copy()
                     enr_data_safe['Converted Date'] = pd.to_datetime(enr_data_safe['Converted Date'], errors='coerce').dt.date
-                    enr_data_safe['Total Accrued Amount'] = pd.to_numeric(enr_data_safe['Total Accrued Amount'], errors='coerce').fillna(0)
+                    if 'Total Accrued Amount' in enr_data_safe.columns:
+                        enr_data_safe['Total Accrued Amount'] = pd.to_numeric(enr_data_safe['Total Accrued Amount'], errors='coerce').fillna(0)
                     
                     # Match Start/End Date AND Ensure University matches the Dashboard's current view
-                    enrolled_filtered = enr_data_safe[
-                        (enr_data_safe['Converted Date'] >= start_date) & 
-                        (enr_data_safe['Converted Date'] <= end_date) & 
-                        (enr_data_safe['Enrolled University'].isin(valid_unis))
-                    ]
+                    if 'Enrolled University' in enr_data_safe.columns:
+                        enrolled_filtered = enr_data_safe[
+                            (enr_data_safe['Converted Date'] >= start_date) & 
+                            (enr_data_safe['Converted Date'] <= end_date) & 
+                            (enr_data_safe['Enrolled University'].isin(valid_unis))
+                        ]
+                    else:
+                        enrolled_filtered = enr_data_safe[(enr_data_safe['Converted Date'] >= start_date) & (enr_data_safe['Converted Date'] <= end_date)]
 
                 # Get unique Source TAGs to iterate through
                 unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
@@ -740,17 +747,17 @@ if check_password():
                 roas_data = []
 
                 for tag in unique_tags:
-                    # Calculate Individual Spends based on TAG
+                    # Calculate Individual Spends based on TAG safely
                     spend = 0
-                    if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
+                    if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty and 'Source' in gs_inhouse_filtered.columns and 'Cost' in gs_inhouse_filtered.columns:
                         spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum()
-                    elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
+                    elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty and 'Source' in gs_inhouse_filtered.columns and 'Cost' in gs_inhouse_filtered.columns:
                         spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']['Cost'].sum()
-                    elif tag == 'LINKEDIN INHOUSE' and not gs_inhouse_filtered.empty:
+                    elif tag == 'LINKEDIN INHOUSE' and not gs_inhouse_filtered.empty and 'Source' in gs_inhouse_filtered.columns and 'Cost' in gs_inhouse_filtered.columns:
                         spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]['Cost'].sum()
-                    elif tag == 'META-DEVENDER' and not gs_dev_filtered.empty:
+                    elif tag == 'META-DEVENDER' and not gs_dev_filtered.empty and 'Facebook Spend' in gs_dev_filtered.columns:
                         spend = gs_dev_filtered['Facebook Spend'].sum()
-                    elif tag == 'GOOGLE-DEVENDER' and not gs_dev_filtered.empty:
+                    elif tag == 'GOOGLE-DEVENDER' and not gs_dev_filtered.empty and 'Google Spend' in gs_dev_filtered.columns:
                         spend = gs_dev_filtered['Google Spend'].sum()
 
                     # Calculate MySQL Lead Metrics
@@ -765,9 +772,9 @@ if check_password():
                     conv_overall_mask = (df_tag_overall['Converted_DT'] >= start_ts) & (df_tag_overall['Converted_DT'] <= end_ts)
                     conv_overall = len(df_tag_overall[conv_overall_mask])
 
-                    # Calculate Booked Amount from Enrolled Data Sheet
+                    # Calculate Booked Amount from Enrolled Data Sheet safely
                     booked_amount = 0
-                    if not enrolled_filtered.empty:
+                    if not enrolled_filtered.empty and 'Converted Source TAG' in enrolled_filtered.columns and 'Total Accrued Amount' in enrolled_filtered.columns:
                         booked_amount = enrolled_filtered[enrolled_filtered['Converted Source TAG'].astype(str).str.strip().str.upper() == tag.upper()]['Total Accrued Amount'].sum()
 
                     # Derived ROAS Formulas
