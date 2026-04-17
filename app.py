@@ -4,56 +4,118 @@ import mysql.connector
 import datetime
 import base64
 
-# --- 1. PAGE CONFIGURATION & ENTERPRISE COMPACT UI ---
+# --- 1. PAGE CONFIGURATION & CEO-LEVEL ENTERPRISE UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
 st.markdown("""
 <style>
-    /* Main Title Styling - Applied only to Text, keeping Emojis Original */
+    /* Main Title Styling - Premium Gradient */
     .gradient-text {
-        background: -webkit-linear-gradient(#4facfe, #00f2fe);
+        background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-weight: 800;
+        font-weight: 900;
+        letter-spacing: -1px;
     }
     
-    /* Highlight/Glow Effect on Mouse Hover */
+    /* Modern Tabs Styling */
+    div[data-testid="stTabs"] button {
+        font-size: 16px;
+        font-weight: 600;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+        border-radius: 8px 8px 0 0;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: #00f2fe !important;
+        border-bottom: 3px solid #00f2fe !important;
+        background: rgba(0, 242, 254, 0.05);
+    }
+    
+    /* Sleek Glassmorphism Input Fields */
+    .stTextInput>div>div>input, 
+    .stDateInput>div>div>input, 
+    .stSelectbox>div>div>div {
+        border-radius: 8px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        transition: all 0.3s ease-in-out !important;
+        background-color: rgba(30, 41, 59, 0.5) !important; /* Dark Slate */
+        color: white !important;
+    }
+    .stTextInput>div>div>input:focus, 
+    .stDateInput>div>div>input:focus, 
+    .stSelectbox>div>div>div:focus,
     .stTextInput>div>div>input:hover, 
     .stDateInput>div>div>input:hover, 
     .stSelectbox>div>div>div:hover {
         border-color: #00f2fe !important;
-        box-shadow: 0 0 12px rgba(0, 242, 254, 0.6) !important;
-        transition: 0.3s ease-in-out;
+        box-shadow: 0 0 12px rgba(0, 242, 254, 0.25) !important;
+        background-color: rgba(15, 23, 42, 0.8) !important;
     }
-    
-    /* Highlight effect for Dataframes */
+
+    /* Hide the form border to maintain clean login UI */
+    [data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    /* Premium DataFrames */
+    .stDataFrame {
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
     .stDataFrame:hover {
-        box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
-        border-radius: 10px;
-        transition: 0.3s ease-in-out;
+        box-shadow: 0 0 20px rgba(0, 242, 254, 0.15);
+        border-color: rgba(0, 242, 254, 0.3);
+        transition: 0.3s ease;
     }
-    
-    /* Stylish Buttons */
-    .stButton>button {
-        transition: all 0.3s ease;
+
+    /* VIP Professional Buttons */
+    .stButton>button, .stFormSubmitButton>button {
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+        border: 1px solid rgba(0, 242, 254, 0.3) !important;
+        color: #e2e8f0 !important;
+        transition: all 0.3s ease !important;
+        padding: 10px 24px !important;
     }
-    .stButton>button:hover {
-        background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
-        color: white;
-        border: none;
-        box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
-        transform: scale(1.02);
+    .stButton>button:hover, .stFormSubmitButton>button:hover {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid transparent !important;
+        box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4) !important;
+        transform: translateY(-2px);
     }
-    
-    /* Remove Empty Space at the Top to Shift Content Up */
+
+    /* Info Boxes (First Login Tracker) */
+    .stAlert {
+        border-radius: 8px !important;
+        border: 1px solid rgba(0, 242, 254, 0.2) !important;
+        background-color: rgba(0, 242, 254, 0.05) !important;
+        color: #e2e8f0 !important;
+        backdrop-filter: blur(10px);
+    }
+
+    /* Layout Tweaks for Enterprise Width */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 2rem !important;
+        max-width: 96% !important; /* Maximizes screen usage */
     }
     
-    /* === ADDED: SIDEBAR SPACE & ALIGNMENT OPTIMIZATION CSS === */
+    /* === ADDED: SIDEBAR CENTER ALIGNMENT & EXTRA SPACE REMOVAL CSS === */
     [data-testid="stSidebar"] {
-        text-align: center; /* General center alignment */
+        text-align: center;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
+        text-align: center !important;
     }
     [data-testid="stSidebar"] label p {
         text-align: center !important;
@@ -66,27 +128,23 @@ st.markdown("""
     [data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] {
         justify-content: center !important;
     }
-    
-    /* Optimize Sidebar Space FURTHER to remove gaps around welcome and titles */
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        display: flex;
+        justify-content: center;
+        text-align: center;
+    }
     [data-testid="stSidebarHeader"] {
-        padding-top: 0.5rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 0rem !important;
         min-height: auto !important;
     }
     [data-testid="stSidebarUserContent"] {
         padding-top: 0rem !important;
     }
-    [data-testid="stSidebarUserContent"] h1, 
-    [data-testid="stSidebarUserContent"] h2, 
-    [data-testid="stSidebarUserContent"] h3 {
-        padding-top: 0rem !important;
-        margin-top: 0rem !important;
-        padding-bottom: 0.5rem !important; /* Standard compact space below titles */
-    }
-    /* Reduce gaps around horizontal rule */
     hr {
-        margin-top: 0.5rem !important;
-        margin-bottom: 0.5rem !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -101,8 +159,8 @@ USERS = {
 }
 
 def generate_token(uname):
-    """Generates a token valid only for today, including initial login timestamp. FIX: Removed <br> tag construct."""
-    login_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p") # Clean string construction
+    """Generates a token valid only for today, including initial login timestamp"""
+    login_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
     raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
@@ -111,12 +169,10 @@ def verify_token(token):
     try:
         raw = base64.b64decode(token).decode()
         parts = raw.split("|")
-        # New token format with time
         if len(parts) == 3:
             uname, date_str, login_time = parts
             if date_str == str(datetime.date.today()) and uname in USERS:
                 return uname, login_time
-        # Fallback for old active tokens (just in case)
         elif len(parts) == 2:
             uname, date_str = parts
             if date_str == str(datetime.date.today()) and uname in USERS:
@@ -126,7 +182,6 @@ def verify_token(token):
     return None, None
 
 def check_password():
-    # Check if a valid token already exists in URL (for browser refresh)
     if "token" in st.query_params:
         valid_user, login_time = verify_token(st.query_params["token"])
         if valid_user:
@@ -136,7 +191,7 @@ def check_password():
             st.session_state["login_time"] = login_time
 
     if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
+        st.session_state["password_correct"] = None 
 
     def password_entered():
         uname = st.session_state["username_input"].strip().lower()
@@ -146,56 +201,67 @@ def check_password():
             st.session_state["password_correct"] = True
             st.session_state["username"] = uname
             st.session_state["current_user"] = USERS[uname]["name"]
-            
-            # Set Token in URL (Generates time dynamically)
             new_token = generate_token(uname)
             st.query_params["token"] = new_token
             _, login_time = verify_token(new_token)
             st.session_state["login_time"] = login_time
-            
             del st.session_state["password_input"]  
         else:
-            st.session_state["password_correct"] = False
+            st.session_state["password_correct"] = False 
 
-    if not st.session_state["password_correct"]:
-        st.title("🔐 Login to Degree Leads Analysis")
-        st.text_input("Username", key="username_input")
-        # FIX: Added placeholder="" to override Streamlit's "Please enter to apply" hint.
-        st.text_input("Password", type="password", placeholder="", key="password_input")
-        st.button("Login", on_click=password_entered)
+    if not st.session_state.get("password_correct"):
+        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
+        st.markdown("<br><br><br>", unsafe_allow_html=True) 
         
-        if "password_correct" in st.session_state and st.session_state["password_correct"] == False:
-            st.error("😕 Invalid Username or Password")
+        col1, col2, col3 = st.columns([1, 1.5, 1]) 
+        
+        with col2:
+            st.markdown("<h3 style='text-align: center; color: #94a3b8; font-weight: 500; letter-spacing: 2px; margin-bottom: -15px;'>HERO VIRED PVT LTD.</h3>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; font-size: 36px;'>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            with st.form("login_form"):
+                st.text_input("Username", key="username_input")
+                st.text_input("Password", type="password", key="password_input")
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # --- MODIFIED: REMOVED "Press Enter to Apply" by Using FormSubmitButton ---
+                # Form Submit Button automatically maps "Enter" key press perfectly without showing the hint text.
+                submitted = st.form_submit_button("Secure Login", use_container_width=True, on_click=password_entered)
+            
+            if st.session_state["password_correct"] == False:
+                st.error("😕 Invalid Username or Password")
         return False
     return True
 
 # --- 3. MAIN DASHBOARD ---
 if check_password():
     
-    # Security Rule: Hide Top Cloud Menu for non-admins (anyone except hx0335)
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                /* Hides ONLY the Streamlit top right menu (Manage App, GitHub, etc.), keeping Sidebar Toggle safe */
                 [data-testid="stToolbar"] {
                     display: none !important;
                 }
             </style>
         """, unsafe_allow_html=True)
     
-    # --- SIDEBAR (NOW FULY COMPACT AND BR-FREE) ---
-    st.sidebar.markdown("<div style='text-align: center; margin-top: -10px; margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
-    st.sidebar.title("Navigations")
-    st.sidebar.success(f"Welcome {st.session_state['current_user']}")
+    # --- SIDEBAR (Now fully Center Aligned & Extra Space removed via CSS) ---
+    st.sidebar.markdown("<div style='text-align: center; margin-top: -10px; margin-bottom: 5px;'><small style='color: #94a3b8;'><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h2 style='text-align: center; margin-top: 0px;'>Hero Vired Pvt Ltd.</h2>", unsafe_allow_html=True)
     
-    # --- ADDED: FIRST LOGIN TIME TRACKER (Clean time string display, <br> removed) ---
+    # --- MODIFIED: REMOVED DEFAULT ALERTS (SUCCESS/INFO) TO REMOVE EXTRA SPACE & HTML TAGS ---
+    # Custom Markdown for centered text with corporate look and controlled margins for zero extra space.
+    st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 200, 0, 0.3); background-color: rgba(0, 150, 0, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>Welcome {st.session_state['current_user']}</p></div>", unsafe_allow_html=True)
+    
     if "login_time" in st.session_state:
-        st.sidebar.info(f"🕒 First Login: {st.session_state['login_time']}")
+        # Custom centered markdown for time tracker to remove tags and space. 
+        # `<br>` tag removed. Keeping the layout single line and removing space.
+        st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.3); background-color: rgba(0, 242, 254, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>🕒 First Login: {st.session_state['login_time']}</p></div>", unsafe_allow_html=True)
         
     st.sidebar.markdown("---")
     
-    # Explicit Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
+    if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
         
@@ -209,7 +275,6 @@ if check_password():
     
     source_filter = st.sidebar.selectbox("Source", ["All", "FACEBOOK", "GOOGLE", "LINKEDIN"])
     
-    # OWNER FILTER (Dynamic rule implementation)
     owner_filter = "All"
     current_username = st.session_state["username"]
     
@@ -217,14 +282,14 @@ if check_password():
         owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin & Pramod", "Devender"])
     
     st.sidebar.markdown("---")
-    if st.sidebar.button("Logout"):
+    if st.sidebar.button("Logout", use_container_width=True):
         st.query_params.clear()
         st.session_state.clear()
         st.rerun()
 
-    st.title("🎓 Degree Leads Analysis")
+    st.markdown("<h1>🎓 <span class='gradient-text'>Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
 
-    # --- DATABASE & GOOGLE SHEET CONNECTION ---
+    # ... DATABASE & GOOGLE SHEET CONNECTION FUNCTIONS REMAIN UNCHANGED ...
     @st.cache_data(ttl=600) 
     def load_data_from_mysql(uname):
         try:
@@ -236,7 +301,6 @@ if check_password():
                 password=st.secrets["mysql"]["password"]
             )
             
-            # Decide SQL tags dynamically based on exact user mapping
             if uname in ['hx1192', 'hx1464']:
                 tags_condition = "('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE')"
             elif uname == 'hx0000':
@@ -334,7 +398,7 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Overall Spends Google Sheet. Please check if the link is accessible to anyone: {e}")
+            st.error(f"Failed to load Overall Spends Google Sheet: {e}")
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
@@ -345,7 +409,7 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Devender Spends Sheet. Please check permissions: {e}")
+            st.error(f"Failed to load Devender Spends Sheet: {e}")
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
@@ -356,39 +420,33 @@ if check_password():
             df.columns = df.columns.str.strip()
             return df
         except Exception as e:
-            st.error(f"Failed to load Enrolled Data Sheet. Please check permissions: {e}")
+            st.error(f"Failed to load Enrolled Data Sheet: {e}")
             return pd.DataFrame()
 
-    # Call functions with current user to maintain strict DB rules
     raw_data = load_data_from_mysql(current_username)
     gs_data = load_google_sheet()
     devender_data = load_devender_spends()
     enrolled_data = load_enrolled_data()
 
-    tab1, tab2, tab3 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics", "📈 Campaign Analytics", "📊 Daily Leads", "💰 ROAS Dashboard"])
 
     if not raw_data.empty:
-        # Master list of universities
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
         
-        # Apply Source Filter (Facebook, Google, LinkedIn)
         if source_filter != "All":
             filtered_data = raw_data[raw_data['Lead_Type'] == source_filter].copy()
         else:
             filtered_data = raw_data.copy()
 
-        # Apply Additional Owner Filter (For Admins/Others)
         if owner_filter == "Vipin & Pramod":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
         elif owner_filter == "Devender":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
 
-        # SAFE PANDAS NATIVE DATETIME CONVERSION
         date_cols = ['CreatedOn_Date', 'Connected_Thirty_sec', 'Counselled_DT', 'Offer_DT', 'Converted_DT']
         for col in date_cols:
             filtered_data[col] = pd.to_datetime(filtered_data[col], errors='coerce')
 
-        # Convert Streamlit inputs to Pandas Timestamps for safe comparison
         start_ts = pd.to_datetime(start_date)
         end_ts = pd.to_datetime(end_date)
 
@@ -399,17 +457,13 @@ if check_password():
             if search_query:
                 mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_query, case=False)).any(axis=1)
                 search_df = filtered_data[mask]
-                
-                # Format dates back to string for clean display
                 display_df = search_df.copy()
-                for col in date_cols:
-                    display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True)
+                for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
+                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
             else:
                 display_df = filtered_data.copy()
-                for col in date_cols:
-                    display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True)
+                for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
+                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
             st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
             st.warning("Data failed to load. Please check your SQL Query or Database connection.")
@@ -418,311 +472,276 @@ if check_password():
     with tab2:
         if not raw_data.empty:
             if start_date <= end_date:
-                
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
-                # --- ENROLLED DATA LOGIC FOR TAB 2 (Respecting Filters) ---
                 enrolled_filtered_tab2 = pd.DataFrame()
                 if not enrolled_data.empty:
                     enr_data_safe = enrolled_data.copy()
-                    
                     date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
                     uni_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'ENROLLED UNIVERSITY'), None)
                     acc_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'TOTAL ACCRUED AMOUNT'), None)
                     tag_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
-                    
                     if date_col and uni_col and acc_col and tag_col:
                         enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
-                        enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col], errors='coerce').fillna(0)
+                        # Removed commas before casting to numeric to prevent string conversion crash
+                        enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                         
-                        # Apply currently active Source and Owner filters
                         valid_tags = filtered_data['Source_TAG'].dropna().unique()
                         valid_tags_clean = [str(t).replace(' ', '').replace('-', '').upper() for t in valid_tags]
                         if 'METADEVENDER' in valid_tags_clean: valid_tags_clean.append('METADEVENDAR')
                         if 'GOOGLEDEVENDER' in valid_tags_clean: valid_tags_clean.append('GOOGLEDEVENDAR')
-                            
                         enr_tags_clean = enr_data_safe[tag_col].astype(str).str.replace(' ', '', regex=False).str.replace('-', '', regex=False).str.upper()
-                        
-                        enrolled_filtered_tab2 = enr_data_safe[
-                            (enr_data_safe[date_col] >= start_date) & 
-                            (enr_data_safe[date_col] <= end_date) &
-                            (enr_tags_clean.isin(valid_tags_clean))
-                        ]
-                # ------------------------------------------------------------
+                        enrolled_filtered_tab2 = enr_data_safe[(enr_data_safe[date_col] >= start_date) & (enr_data_safe[date_col] <= end_date) & (enr_tags_clean.isin(valid_tags_clean))]
 
                 report_data = []
-
                 for uni in all_universities:
                     df_uni_sm = df_created[df_created['Hyperlap_University_Name'] == uni]
                     df_uni_overall = filtered_data[filtered_data['Hyperlap_University_Name'] == uni]
-                    
                     lead_received = len(df_uni_sm)
                     
-                    # --- CALCULATE BOOKED AMOUNT ---
-                    booked_amount = 0
+                    booked_amount = 0.0
                     if not enrolled_filtered_tab2.empty:
                         clean_enrolled_unis = enrolled_filtered_tab2[uni_col].astype(str).str.replace('_', ' ').str.strip().str.upper().str.replace(' ', '', regex=False)
                         clean_uni = str(uni).replace('_', ' ').strip().upper().replace(' ', '')
-                        mask = clean_enrolled_unis == clean_uni
-                        booked_amount = enrolled_filtered_tab2[mask][acc_col].sum()
-                    # -------------------------------
+                        booked_amount = float(enrolled_filtered_tab2[clean_enrolled_unis == clean_uni][acc_col].sum())
                     
                     facebook_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'FACEBOOK'])
                     google_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'GOOGLE'])
                     linkedin_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'LINKEDIN'])
-                    
                     junk_sm_mask = df_uni_sm['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
                     junk_sm = len(df_uni_sm[junk_sm_mask])
                     junk_pct = junk_sm / lead_received if lead_received > 0 else 0
-                    
                     junk_overall_mask = df_uni_overall['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
                     junk_overall = len(df_uni_overall[junk_overall_mask])
-                    
                     conn_30_sm_mask = (df_uni_sm['Connected_Thirty_sec'] >= start_ts) & (df_uni_sm['Connected_Thirty_sec'] <= end_ts)
                     conn_30_sm = len(df_uni_sm[conn_30_sm_mask])
                     conn_30_sm_pct = conn_30_sm / lead_received if lead_received > 0 else 0
-                    
                     conn_overall_mask = (df_uni_overall['Connected_Thirty_sec'] >= start_ts) & (df_uni_overall['Connected_Thirty_sec'] <= end_ts)
                     conn_30_overall = len(df_uni_overall[conn_overall_mask])
-
                     couns_sm_mask = (df_uni_sm['Counselled_DT'] >= start_ts) & (df_uni_sm['Counselled_DT'] <= end_ts)
                     couns_sm = len(df_uni_sm[couns_sm_mask])
                     couns_sm_pct = couns_sm / conn_30_sm if conn_30_sm > 0 else 0
-
                     couns_overall_mask = (df_uni_overall['Counselled_DT'] >= start_ts) & (df_uni_overall['Counselled_DT'] <= end_ts)
                     couns_overall = len(df_uni_overall[couns_overall_mask])
-
                     offer_sm_mask = (df_uni_sm['Offer_DT'] >= start_ts) & (df_uni_sm['Offer_DT'] <= end_ts)
                     offer_sm = len(df_uni_sm[offer_sm_mask])
-
                     offer_overall_mask = (df_uni_overall['Offer_DT'] >= start_ts) & (df_uni_overall['Offer_DT'] <= end_ts)
                     offer_overall = len(df_uni_overall[offer_overall_mask])
-
                     conv_sm_mask = (df_uni_sm['Converted_DT'] >= start_ts) & (df_uni_sm['Converted_DT'] <= end_ts)
                     conv_sm = len(df_uni_sm[conv_sm_mask])
-
                     conv_overall_mask = (df_uni_overall['Converted_DT'] >= start_ts) & (df_uni_overall['Converted_DT'] <= end_ts)
                     conv_overall = len(df_uni_overall[conv_overall_mask])
 
-                    offer_to_couns_pct_sm = offer_sm / couns_sm if couns_sm > 0 else 0
-                    conv_to_offer_pct_sm = conv_sm / offer_sm if offer_sm > 0 else 0
-                    conv_to_couns_pct_sm = conv_sm / couns_sm if couns_sm > 0 else 0
-                    conv_to_lead_pct_sm = conv_sm / lead_received if lead_received > 0 else 0
-
                     report_data.append({
-                        "Hyperlap Universities": uni,
-                        "Lead Received": lead_received,
-                        "Facebook": facebook_count,
-                        "Google": google_count,
-                        "LinkedIn": linkedin_count,
-                        "Junk SM": junk_sm,
-                        "Junk SM %": junk_pct,
-                        "Junk Overall": junk_overall,
-                        "Connected 30 Sec SM": conn_30_sm,
-                        "Connected 30 Sec SM %": conn_30_sm_pct,
-                        "Connected 30 Sec Overall": conn_30_overall,
-                        "Counselled SM": couns_sm,
-                        "Counselled SM %": couns_sm_pct,
-                        "Counselled Overall": couns_overall,
-                        "Offer SM": offer_sm,
-                        "Offer Overall": offer_overall,
-                        "Converted SM": conv_sm,
-                        "Converted Overall": conv_overall,
-                        "Booked Amount": booked_amount,
-                        "Offer To Counselled % SM": offer_to_couns_pct_sm,
-                        "Offer To Converted % SM": conv_to_offer_pct_sm,
-                        "Counselled To Converted % SM": conv_to_couns_pct_sm,
-                        "Lead To Converted % SM": conv_to_lead_pct_sm
+                        "Hyperlap Universities": uni, "Lead Received": lead_received, "Facebook": facebook_count,
+                        "Google": google_count, "LinkedIn": linkedin_count, "Junk SM": junk_sm, "Junk SM %": junk_pct,
+                        "Junk Overall": junk_overall, "Connected 30 Sec SM": conn_30_sm, "Connected 30 Sec SM %": conn_30_sm_pct,
+                        "Connected 30 Sec Overall": conn_30_overall, "Counselled SM": couns_sm, "Counselled SM %": couns_sm_pct,
+                        "Counselled Overall": couns_overall, "Offer SM": offer_sm, "Offer Overall": offer_overall,
+                        "Converted SM": conv_sm, "Converted Overall": conv_overall, "Booked Amount": booked_amount,
+                        "Offer To Counselled % SM": offer_sm / couns_sm if couns_sm > 0 else 0,
+                        "Offer To Converted % SM": conv_sm / offer_sm if offer_sm > 0 else 0,
+                        "Counselled To Converted % SM": conv_sm / couns_sm if couns_sm > 0 else 0,
+                        "Lead To Converted % SM": conv_sm / lead_received if lead_received > 0 else 0
                     })
 
                 report_df = pd.DataFrame(report_data)
                 
-                # Grand Total Row Calculation
+                # --- GRAND TOTAL ROW AT THE TOP ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
-                sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
-                                'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
-                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
+                sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
+                for col in sum_columns: total_row[col] = report_df[col].sum()
                 
-                for col in sum_columns:
-                    total_row[col] = report_df[col].sum()
-                    
-                # Recalculate percentages for total row
-                total_row['Junk SM %'] = total_row['Junk SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
-                total_row['Connected 30 Sec SM %'] = total_row['Connected 30 Sec SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
-                total_row['Counselled SM %'] = total_row['Counselled SM'] / total_row['Connected 30 Sec SM'] if total_row['Connected 30 Sec SM'] > 0 else 0
-                total_row['Offer To Counselled % SM'] = total_row['Offer SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
-                total_row['Offer To Converted % SM'] = total_row['Converted SM'] / total_row['Offer SM'] if total_row['Offer SM'] > 0 else 0
-                total_row['Counselled To Converted % SM'] = total_row['Converted SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
-                total_row['Lead To Converted % SM'] = total_row['Converted SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
-
-                report_df = pd.concat([report_df, pd.DataFrame([total_row])], ignore_index=True)
+                # Concat Total row FIRST so it stays at index 0 (Top)
+                report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
-                # --- CHANGE HERE: Insert Total row at top ---
-                # report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
-
+                # Recalculate percentage formulas for Total Row (now at index 0)
+                report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
+                report_df.at[0, 'Connected 30 Sec SM %'] = report_df.at[0, 'Connected 30 Sec SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
+                report_df.at[0, 'Counselled SM %'] = report_df.at[0, 'Counselled SM'] / report_df.at[0, 'Connected 30 Sec SM'] if report_df.at[0, 'Connected 30 Sec SM'] > 0 else 0
+                report_df.at[0, 'Offer To Counselled % SM'] = report_df.at[0, 'Offer SM'] / report_df.at[0, 'Counselled SM'] if report_df.at[0, 'Counselled SM'] > 0 else 0
+                report_df.at[0, 'Offer To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Offer SM'] if report_df.at[0, 'Offer SM'] > 0 else 0
+                report_df.at[0, 'Counselled To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Counselled SM'] if report_df.at[0, 'Counselled SM'] > 0 else 0
+                report_df.at[0, 'Lead To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
+                
                 styled_report = report_df.style.format({
-                    "Booked Amount": "{:.2f}",
-                    "Junk SM %": "{:.2%}",
-                    "Connected 30 Sec SM %": "{:.2%}",
-                    "Counselled SM %": "{:.2%}",
-                    "Offer To Counselled % SM": "{:.2%}",
-                    "Offer To Converted % SM": "{:.2%}",
-                    "Counselled To Converted % SM": "{:.2%}",
-                    "Lead To Converted % SM": "{:.2%}"
+                    "Booked Amount": "{:.2f}", "Junk SM %": "{:.2%}", "Connected 30 Sec SM %": "{:.2%}",
+                    "Counselled SM %": "{:.2%}", "Offer To Counselled % SM": "{:.2%}", "Offer To Converted % SM": "{:.2%}",
+                    "Counselled To Converted % SM": "{:.2%}", "Lead To Converted % SM": "{:.2%}"
                 })
-                st.dataframe(styled_report, use_container_width=True)
+                st.dataframe(styled_report, use_container_width=True, height=min(750, (len(report_df) + 1) * 36 + 10))
             else:
                 st.error("❌ End Date cannot be earlier than the Start Date!")
 
-    # --- TAB 3: CAMPAIGN ANALYTICS (WITH GOOGLE SHEET INTEGRATION) ---
+    # --- TAB 3: CAMPAIGN ANALYTICS ---
     with tab3:
         if not raw_data.empty:
             if start_date <= end_date:
-                
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
-
-                # Google Sheet filtering logic (Safe check for columns)
                 if not gs_data.empty and all(col in gs_data.columns for col in ['Day', 'Cost', 'Campaign', 'Source']):
                     gs_data_safe = gs_data.copy()
                     gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
-                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
+                    
+                    # Removed commas before casting to numeric
+                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                     
                     gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
                     gs_filtered = gs_data_safe[gs_mask].copy()
-                    
-                    # --- NEW LOGIC: Map Dashboard Source to Google Sheet Source ---
                     if source_filter != "All":
-                        if source_filter == "GOOGLE":
-                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
-                        elif source_filter == "FACEBOOK":
-                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']
-                        elif source_filter == "LINKEDIN":
-                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]
-                    
-                    # Extract unique campaigns directly from the dynamically filtered Google Sheet
+                        if source_filter == "GOOGLE": gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
+                        elif source_filter == "FACEBOOK": gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']
+                        elif source_filter == "LINKEDIN": gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]
                     all_campaigns_gs = sorted(gs_filtered['Campaign'].dropna().unique())
                 else:
-                    gs_filtered = pd.DataFrame()
-                    all_campaigns_gs = []
+                    gs_filtered = pd.DataFrame(); all_campaigns_gs = []
 
                 report_data_camp = []
-
                 for camp in all_campaigns_gs:
-                    # Spend Calculation from appropriately filtered Google Sheet
-                    camp_spend = gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum()
-                    
-                    # Lead metrics from MySQL Dashboard Data
+                    camp_spend = float(gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum())
                     df_camp_sm = df_created[df_created['Source_Campaign'] == camp]
                     df_camp_overall = filtered_data[filtered_data['Source_Campaign'] == camp]
-                    
                     lead_received = len(df_camp_sm)
-                    
                     facebook_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'FACEBOOK'])
                     google_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'GOOGLE'])
                     linkedin_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'LINKEDIN'])
-                    
-                    junk_sm_mask = df_camp_sm['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
-                    junk_sm = len(df_camp_sm[junk_sm_mask])
-                    junk_pct = junk_sm / lead_received if lead_received > 0 else 0
-                    
-                    junk_overall_mask = df_camp_overall['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
-                    junk_overall = len(df_camp_overall[junk_overall_mask])
-                    
-                    conn_30_sm_mask = (df_camp_sm['Connected_Thirty_sec'] >= start_ts) & (df_camp_sm['Connected_Thirty_sec'] <= end_ts)
-                    conn_30_sm = len(df_camp_sm[conn_30_sm_mask])
-                    conn_30_sm_pct = conn_30_sm / lead_received if lead_received > 0 else 0
-                    
-                    conn_overall_mask = (df_camp_overall['Connected_Thirty_sec'] >= start_ts) & (df_camp_overall['Connected_Thirty_sec'] <= end_ts)
-                    conn_30_overall = len(df_camp_overall[conn_overall_mask])
-
-                    couns_sm_mask = (df_camp_sm['Counselled_DT'] >= start_ts) & (df_camp_sm['Counselled_DT'] <= end_ts)
-                    couns_sm = len(df_uni_sm[couns_sm_mask])
-                    couns_sm_pct = couns_sm / conn_30_sm if conn_30_sm > 0 else 0
-
-                    couns_overall_mask = (df_camp_overall['Counselled_DT'] >= start_ts) & (df_camp_overall['Counselled_DT'] <= end_ts)
-                    couns_overall = len(df_uni_overall[couns_overall_mask])
-
-                    offer_sm_mask = (df_camp_sm['Offer_DT'] >= start_ts) & (df_camp_sm['Offer_DT'] <= end_ts)
-                    offer_sm = len(df_camp_sm[offer_sm_mask])
-
-                    offer_overall_mask = (df_camp_overall['Offer_DT'] >= start_ts) & (df_camp_overall['Offer_DT'] <= end_ts)
-                    offer_overall = len(df_camp_overall[offer_overall_mask])
-
-                    conv_sm_mask = (df_camp_sm['Converted_DT'] >= start_ts) & (df_camp_sm['Converted_DT'] <= end_ts)
-                    conv_sm = len(df_camp_sm[conv_sm_mask])
-
-                    conv_overall_mask = (df_camp_overall['Converted_DT'] >= start_ts) & (df_camp_overall['Converted_DT'] <= end_ts)
-                    conv_overall = len(df_camp_overall[conv_overall_mask])
-
-                    offer_to_couns_pct_sm = offer_sm / couns_sm if couns_sm > 0 else 0
-                    conv_to_offer_pct_sm = conv_sm / offer_sm if offer_sm > 0 else 0
-                    conv_to_couns_pct_sm = conv_sm / couns_sm if couns_sm > 0 else 0
-                    conv_to_lead_pct_sm = conv_sm / lead_received if lead_received > 0 else 0
-
                     report_data_camp.append({
-                        "Source Campaign": camp,
-                        "Spend": camp_spend,
-                        "Lead Received": lead_received,
-                        "Facebook": facebook_count,
-                        "Google": google_count,
-                        "LinkedIn": linkedin_count,
-                        "Junk SM": junk_sm,
-                        "Junk SM %": junk_pct,
-                        "Junk Overall": junk_overall,
-                        "Connected 30 Sec SM": conn_30_sm,
-                        "Connected 30 Sec SM %": conn_30_sm_pct,
-                        "Connected 30 Sec Overall": conn_30_overall,
-                        "Counselled SM": couns_sm,
-                        "Counselled SM %": couns_sm_pct,
-                        "Counselled Overall": couns_overall,
-                        "Offer SM": offer_sm,
-                        "Offer Overall": offer_overall,
-                        "Converted SM": conv_sm,
-                        "Converted Overall": conv_overall,
-                        "Offer To Counselled % SM": offer_to_couns_pct_sm,
-                        "Offer To Converted % SM": conv_to_offer_pct_sm,
-                        "Counselled To Converted % SM": conv_to_couns_pct_sm,
-                        "Lead To Converted % SM": conv_to_lead_pct_sm
+                        "Source Campaign": camp, "Spend": camp_spend, "Lead Received": lead_received,
+                        "Facebook": facebook_count, "Google": google_count, "LinkedIn": linkedin_count,
+                        "Junk SM": len(df_camp_sm[df_camp_sm['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)]),
+                        "Connected 30 Sec SM": len(df_camp_sm[(df_camp_sm['Connected_Thirty_sec'] >= start_ts) & (df_camp_sm['Connected_Thirty_sec'] <= end_ts)]),
+                        "Counselled SM": len(df_camp_sm[(df_camp_sm['Counselled_DT'] >= start_ts) & (df_camp_sm['Counselled_DT'] <= end_ts)]),
+                        "Offer SM": len(df_camp_sm[(df_camp_sm['Offer_DT'] >= start_ts) & (df_camp_sm['Offer_DT'] <= end_ts)]),
+                        "Converted SM": len(df_camp_sm[(df_camp_sm['Converted_DT'] >= start_ts) & (df_camp_sm['Converted_DT'] <= end_ts)])
                     })
-
                 if report_data_camp:
                     report_df_camp = pd.DataFrame(report_data_camp)
                     
-                    # Grand Total Row Calculation for Campaign
+                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row_camp = {'Source Campaign': 'Grand Total'}
-                    sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
-                                    'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
-                                    'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
+                    sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Connected 30 Sec SM', 'Counselled SM', 'Offer SM', 'Converted SM']
+                    for col in sum_columns_camp: total_row_camp[col] = report_df_camp[col].sum()
                     
-                    for col in sum_columns_camp:
-                        total_row_camp[col] = report_df_camp[col].sum()
-                        
-                    # Recalculate percentages for total row (Campaign)
-                    total_row_camp['Junk SM %'] = total_row_camp['Junk SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
-                    total_row_camp['Connected 30 Sec SM %'] = total_row_camp['Connected 30 Sec SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
-                    total_row_camp['Counselled SM %'] = total_row_camp['Counselled SM'] / total_row_camp['Connected 30 Sec SM'] if total_row_camp['Connected 30 Sec SM'] > 0 else 0
-                    total_row_camp['Offer To Counselled % SM'] = total_row_camp['Offer SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
-                    total_row_camp['Offer To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Offer SM'] if total_row_camp['Offer SM'] > 0 else 0
-                    total_row_camp['Counselled To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
-                    total_row_camp['Lead To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
-
-                    # report_df_camp = pd.concat([report_df_camp, pd.DataFrame([total_row_camp])], ignore_index=True)
-                    
-                    # --- CHANGE HERE: Insert Total row at top ---
+                    # Concat at top
                     report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
+                    
+                    st.dataframe(report_df_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
+                else: st.info("No Campaign Data found.")
 
-                    styled_report_camp = report_df_camp.style.format({
-                        "Spend": "{:.2f}",
-                        "Junk SM %": "{:.2%}",
-                        "Connected 30 Sec SM %": "{:.2%}",
-                        "Counselled SM %": "{:.2%}",
-                        "Offer To Counselled % SM": "{:.2%}",
-                        "Offer To Converted % SM": "{:.2%}",
-                        "Counselled To Converted % SM": "{:.2%}",
-                        "Lead To Converted % SM": "{:.2%}"
-                    })
-                    st.dataframe(styled_report_camp, use_container_width=True)
-                else:
-                    st.info("No Campaign Data found for the selected date range. Please verify the Google Sheet.")
+    # --- TAB 4: DAILY LEAD RECEIVED ---
+    with tab4:
+        if not raw_data.empty:
+            today_ts = pd.to_datetime(datetime.date.today())
+            st.subheader(f"📅 Daily Leads Received (Today: {today_ts.strftime('%d %b %Y')})")
+            df_today = filtered_data[filtered_data['CreatedOn_Date'] == today_ts]
+            uni_mapping = {"ALLIANCE UNIVERSITY": "alliance", "AMITY UNIVERSITY": "amity", "BHARATI VIDYAPEETH UNIVERSITY": "bharati", "DR. D Y PATIL UNIVERSITY": "patil", "GALGOTIAS UNIVERSITY": "galgotias", "GENERIC UNIVERSITY": "generic", "GLA UNIVERSITY": "gla", "LOVELY PROFESSIONAL UNIVERSITY": "lovely", "MANIPAL UNIVERSITY": "manipal", "NMIMS": "nmims", "SHOOLINI UNIVERSITY": "shoolini", "UTTARANCHAL UNIVERSITY": "uttaranchal"}
+            daily_report_data = []
+            for display_name, search_key in uni_mapping.items():
+                df_uni_today = df_today[df_today['Hyperlap_University_Name'].astype(str).str.contains(search_key, case=False, na=False)]
+                daily_report_data.append({"HYPERLAP_UNIVERSITY_NAME": display_name, "GOOGLE-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE-DEVENDER']), "META-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'META-DEVENDER']), "GOOGLE INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE INHOUSE']), "META INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'META INHOUSE']), "LINKEDIN INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'LINKEDIN INHOUSE']), "TOTAL LEADS": len(df_uni_today)})
+            df_daily = pd.DataFrame(daily_report_data)
+            
+            # --- GRAND TOTAL ROW AT THE TOP ---
+            total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
+            sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
+            for col in sum_cols_daily: total_row_daily[col] = df_daily[col].sum()
+            
+            # Changed sequence so it appends at the Top (Index 0)
+            df_daily = pd.concat([pd.DataFrame([total_row_daily]), df_daily], ignore_index=True)
+            
+            st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
+
+    # --- TAB 5: ROAS DASHBOARD ---
+    with tab5:
+        if not raw_data.empty:
+            if start_date <= end_date:
+                df_created = filtered_data[(filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)]
+                valid_unis_clean = [str(u).replace('_', ' ').strip().upper() for u in filtered_data['Hyperlap_University_Name'].dropna().unique()]
+                unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
+                
+                # --- CLEANING SPENDS DATA EXPLICITLY TO PREVENT STRING CRASHES ---
+                gs_inhouse_filtered = pd.DataFrame()
+                if not gs_data.empty and 'Day' in gs_data.columns and 'Cost' in gs_data.columns:
+                    temp_gs = gs_data.copy()
+                    temp_gs['Day'] = pd.to_datetime(temp_gs['Day'], errors='coerce').dt.date
+                    temp_gs['Cost'] = pd.to_numeric(temp_gs['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    gs_inhouse_filtered = temp_gs[(temp_gs['Day'] >= start_date) & (temp_gs['Day'] <= end_date)]
+
+                gs_dev_filtered = pd.DataFrame()
+                if not devender_data.empty and 'Date' in devender_data.columns:
+                    temp_dev = devender_data.copy()
+                    temp_dev['Date'] = pd.to_datetime(temp_dev['Date'], errors='coerce').dt.date
+                    if 'Google Spend' in temp_dev.columns:
+                        temp_dev['Google Spend'] = pd.to_numeric(temp_dev['Google Spend'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    if 'Facebook Spend' in temp_dev.columns:
+                        temp_dev['Facebook Spend'] = pd.to_numeric(temp_dev['Facebook Spend'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    gs_dev_filtered = temp_dev[(temp_dev['Date'] >= start_date) & (temp_dev['Date'] <= end_date)]
+                
+                roas_data = []
+                for tag in unique_tags:
+                    spend = 0.0
+                    booked_amount = 0.0
+                    
+                    # Spend logic with float enforcement
+                    if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum())
+                    elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']['Cost'].sum())
+                    elif tag == 'LINKEDIN INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]['Cost'].sum())
+                    elif tag == 'META-DEVENDER' and not gs_dev_filtered.empty and 'Facebook Spend' in gs_dev_filtered.columns:
+                        spend = float(gs_dev_filtered['Facebook Spend'].sum())
+                    elif tag == 'GOOGLE-DEVENDER' and not gs_dev_filtered.empty and 'Google Spend' in gs_dev_filtered.columns:
+                        spend = float(gs_dev_filtered['Google Spend'].sum())
+
+                    df_tag_sm = df_created[df_created['Source_TAG'] == tag]
+                    lead_received = len(df_tag_sm)
+                    conv_sm = len(df_tag_sm[(df_tag_sm['Converted_DT'] >= start_ts) & (df_tag_sm['Converted_DT'] <= end_ts)])
+                    conv_ovr = len(filtered_data[(filtered_data['Source_TAG'] == tag) & (filtered_data['Converted_DT'] >= start_ts) & (filtered_data['Converted_DT'] <= end_ts)])
+                    
+                    # Booked amount logic with comma stripping
+                    if not enrolled_data.empty:
+                        enr_data_safe = enrolled_data.copy()
+                        date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
+                        conv_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
+                        acc_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'TOTAL ACCRUED AMOUNT'), None)
+                        
+                        if date_col and conv_col and acc_col:
+                            enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
+                            enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                            
+                            enrolled_filtered = enr_data_safe[(enr_data_safe[date_col] >= start_date) & (enr_data_safe[date_col] <= end_date)]
+                            enrolled_tags = enrolled_filtered[conv_col].astype(str).str.strip().str.upper()
+                            clean_enrolled = enrolled_tags.str.replace(' ', '', regex=False).str.replace('-', '', regex=False)
+                            clean_tag = tag.upper().replace(' ', '').replace('-', '')
+                            
+                            if clean_tag in ['METADEVENDER', 'METADEVENDAR']: mask = clean_enrolled.isin(['METADEVENDER', 'METADEVENDAR'])
+                            elif clean_tag in ['GOOGLEDEVENDER', 'GOOGLEDEVENDAR']: mask = clean_enrolled.isin(['GOOGLEDEVENDER', 'GOOGLEDEVENDAR'])
+                            else: mask = clean_enrolled == clean_tag
+                            
+                            booked_amount = float(enrolled_filtered[mask][acc_col].sum())
+
+                    roas_data.append({"Source Tag": tag, "Spends": spend, "Lead Received": lead_received, "CPL": spend/lead_received if lead_received>0 else 0, "Converted SM": conv_sm, "Converted Overall": conv_ovr, "Booked Amount": booked_amount, "Booked ROAS": booked_amount/spend if spend>0 else 0, "CAC": spend/conv_ovr if conv_ovr>0 else 0, "Lead To Converted SM %": conv_sm/lead_received if lead_received>0 else 0, "Lead To Converted Overall %": conv_ovr/lead_received if lead_received>0 else 0})
+                
+                if roas_data:
+                    roas_df = pd.DataFrame(roas_data)
+                    
+                    # --- GRAND TOTAL ROW AT THE TOP ---
+                    total_row = {"Source Tag": "GRAND TOTAL"}
+                    for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
+                    
+                    # Insert Total Row at index 0 (Top)
+                    roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
+                    
+                    # Recalculate percentage formulas for Total Row (now at index 0)
+                    roas_df.at[0, "CPL"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
+                    roas_df.at[0, "Booked ROAS"] = roas_df.at[0, "Booked Amount"] / roas_df.at[0, "Spends"] if roas_df.at[0, "Spends"] > 0 else 0
+                    roas_df.at[0, "CAC"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Converted Overall"] if roas_df.at[0, "Converted Overall"] > 0 else 0
+                    roas_df.at[0, "Lead To Converted SM %"] = roas_df.at[0, "Converted SM"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
+                    roas_df.at[0, "Lead To Converted Overall %"] = roas_df.at[0, "Converted Overall"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
+                    
+                    col_order = ["Source Tag", "Spends", "Lead Received", "CPL", "Converted SM", "Converted Overall", "Booked Amount", "Booked ROAS", "CAC", "Lead To Converted SM %", "Lead To Converted Overall %"]
+                    styled_roas = roas_df[col_order].style.format({"Spends": "{:.2f}", "CPL": "{:.2f}", "Booked Amount": "{:.2f}", "Booked ROAS": "{:.2f}", "CAC": "{:.2f}", "Lead To Converted SM %": "{:.2%}", "Lead To Converted Overall %": "{:.2%}"})
+                    st.dataframe(styled_roas, use_container_width=True, height=min(750, (len(roas_df) + 1) * 36 + 10))
+                else: st.info("No data available for ROAS Dashboard in the selected date range.")
