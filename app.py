@@ -256,7 +256,7 @@ if check_password():
             conn.close()
             return df
         except Exception as e:
-            st.error(f"Database connect error: {e}")
+            st.error(f"Database connection error: {e}")
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
@@ -323,7 +323,7 @@ if check_password():
                 
             st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
-            st.warning("Data load nahi hua. Kripya apni SQL Query check karein.")
+            st.warning("Data failed to load. Please check your SQL Query or Database connection.")
 
     # --- TAB 2: UNIVERSITY ANALYTICS ---
     with tab2:
@@ -441,7 +441,7 @@ if check_password():
                 
                 st.dataframe(styled_report, use_container_width=True)
             else:
-                st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
+                st.error("❌ End Date cannot be earlier than the Start Date!")
 
     # --- TAB 3: CAMPAIGN ANALYTICS (WITH GOOGLE SHEET INTEGRATION) ---
     with tab3:
@@ -590,4 +590,4 @@ if check_password():
                     
                     st.dataframe(styled_report_camp, use_container_width=True)
                 else:
-                    st.info("In dates ke beech mein koi Campaign Data nahi mila (Google Sheet check karein).")
+                    st.info("No Campaign Data found for the selected date range. Please verify the Google Sheet.")
