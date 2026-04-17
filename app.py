@@ -365,6 +365,35 @@ if check_password():
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
+                # --- ENROLLED DATA LOGIC FOR TAB 2 (Respecting Filters) ---
+                enrolled_filtered_tab2 = pd.DataFrame()
+                if not enrolled_data.empty:
+                    enr_data_safe = enrolled_data.copy()
+                    
+                    date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
+                    uni_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'ENROLLED UNIVERSITY'), None)
+                    acc_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'TOTAL ACCRUED AMOUNT'), None)
+                    tag_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
+                    
+                    if date_col and uni_col and acc_col and tag_col:
+                        enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
+                        enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col], errors='coerce').fillna(0)
+                        
+                        # Apply currently active Source and Owner filters
+                        valid_tags = filtered_data['Source_TAG'].dropna().unique()
+                        valid_tags_clean = [str(t).replace(' ', '').replace('-', '').upper() for t in valid_tags]
+                        if 'METADEVENDER' in valid_tags_clean: valid_tags_clean.append('METADEVENDAR')
+                        if 'GOOGLEDEVENDER' in valid_tags_clean: valid_tags_clean.append('GOOGLEDEVENDAR')
+                            
+                        enr_tags_clean = enr_data_safe[tag_col].astype(str).str.replace(' ', '', regex=False).str.replace('-', '', regex=False).str.upper()
+                        
+                        enrolled_filtered_tab2 = enr_data_safe[
+                            (enr_data_safe[date_col] >= start_date) & 
+                            (enr_data_safe[date_col] <= end_date) &
+                            (enr_tags_clean.isin(valid_tags_clean))
+                        ]
+                # ------------------------------------------------------------
+
                 report_data = []
 
                 for uni in all_universities:
@@ -372,6 +401,15 @@ if check_password():
                     df_uni_overall = filtered_data[filtered_data['Hyperlap_University_Name'] == uni]
                     
                     lead_received = len(df_uni_sm)
+                    
+                    # --- CALCULATE BOOKED AMOUNT ---
+                    booked_amount = 0
+                    if not enrolled_filtered_tab2.empty:
+                        clean_enrolled_unis = enrolled_filtered_tab2[uni_col].astype(str).str.replace('_', ' ').str.strip().str.upper().str.replace(' ', '', regex=False)
+                        clean_uni = str(uni).replace('_', ' ').strip().upper().replace(' ', '')
+                        mask = clean_enrolled_unis == clean_uni
+                        booked_amount = enrolled_filtered_tab2[mask][acc_col].sum()
+                    # -------------------------------
                     
                     facebook_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'FACEBOOK'])
                     google_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'GOOGLE'])
@@ -417,6 +455,7 @@ if check_password():
 
                     report_data.append({
                         "Hyperlap Universities": uni,
+                        "Booked Amount": booked_amount,
                         "Lead Received": lead_received,
                         "Facebook": facebook_count,
                         "Google": google_count,
@@ -444,7 +483,7 @@ if check_password():
                 
                 # --- GRAND TOTAL ROW LOGIC ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
-                sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
+                sum_columns = ['Booked Amount', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
                                 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
                                 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
                 
@@ -462,6 +501,7 @@ if check_password():
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
                 styled_report = report_df.style.format({
+                    "Booked Amount": "{:.2f}",
                     "Junk SM %": "{:.2%}",
                     "Connected 30 Sec SM %": "{:.2%}",
                     "Counselled SM %": "{:.2%}",
