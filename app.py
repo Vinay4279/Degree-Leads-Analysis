@@ -3,24 +3,79 @@ import pandas as pd
 import mysql.connector
 import datetime
 
-# --- 1. PAGE CONFIGURATION ---
-st.set_page_config(page_title="Master Dashboard", page_icon="📊", layout="wide")
+# --- 1. PAGE CONFIGURATION & PROFESSIONAL UI (CSS) ---
+st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
-# --- 2. LOGIN SYSTEM SETUP ---
+# CSS for Professional Look & Glowing Highlight Effect
+st.markdown("""
+<style>
+    /* Main Title Styling */
+    h1 {
+        background: -webkit-linear-gradient(#4facfe, #00f2fe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+    
+    /* Highlight/Glow Effect on Mouse Hover */
+    .stTextInput>div>div>input:hover, 
+    .stDateInput>div>div>input:hover, 
+    .stSelectbox>div>div>div:hover {
+        border-color: #00f2fe !important;
+        box-shadow: 0 0 12px rgba(0, 242, 254, 0.6) !important;
+        transition: 0.3s ease-in-out;
+    }
+    
+    /* Highlight effect for Dataframes and Containers */
+    .stDataFrame:hover {
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        border-radius: 10px;
+        transition: 0.3s ease-in-out;
+    }
+    
+    /* Stylish Buttons */
+    .stButton>button {
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+        transform: scale(1.02);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 2. ADVANCED LOGIN SYSTEM ---
+# Case-insensitive data storage
+USERS = {
+    "hx1001": {"pwd": "hx1001", "name": "Vipul Bhatnagar"},
+    "hx1192": {"pwd": "hx1192", "name": "Vipin Rawat"},
+    "hx1464": {"pwd": "hx1464", "name": "Pramod Kumar"},
+    "hx0000": {"pwd": "hx0000", "name": "Devender"},
+    "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"}
+}
+
 def check_password():
     """Returns True if the user enters the correct ID and Password."""
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
     def password_entered():
-        if st.session_state["username"] == "admin" and st.session_state["password"] == "admin123":
+        # .lower() makes it case-insensitive
+        uname = st.session_state["username"].strip().lower()
+        pwd = st.session_state["password"].strip().lower()
+        
+        if uname in USERS and USERS[uname]["pwd"] == pwd:
             st.session_state["password_correct"] = True
+            st.session_state["current_user"] = USERS[uname]["name"]
             del st.session_state["password"]  
         else:
             st.session_state["password_correct"] = False
 
     if not st.session_state["password_correct"]:
-        st.title("🔐 Login to Master Dashboard")
+        st.title("🔐 Login to Degree Leads Analysis")
         st.text_input("Username", key="username")
         st.text_input("Password", type="password", key="password")
         st.button("Login", on_click=password_entered)
@@ -31,16 +86,31 @@ def check_password():
     
     return True
 
-# --- 3. MAIN DASHBOARD (Log in hone ke baad chalega) ---
+# --- 3. MAIN DASHBOARD ---
 if check_password():
     
+    # --- SIDEBAR (Left Side Filters & Navigation) ---
     st.sidebar.title("Navigations")
-    st.sidebar.success("Logged in as Admin")
+    st.sidebar.success(f"Welcome {st.session_state['current_user']}")
+    st.sidebar.markdown("---")
+    
+    # Filters Ek ke neeche ek
+    today = datetime.date.today()
+    first_day_of_month = today.replace(day=1)
+    
+    start_date = st.sidebar.date_input("Start Date", value=first_day_of_month)
+    end_date = st.sidebar.date_input("End Date", value=today)
+    
+    # Source Filter
+    source_filter = st.sidebar.selectbox("Source", ["All", "FACEBOOK", "GOOGLE", "LINKEDIN"])
+    
+    st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
         st.session_state.clear()
         st.rerun()
 
-    st.title("📊 My Master Project Dashboard")
+    # Main Title
+    st.title("🎓 Degree Leads Analysis")
 
     # --- REAL DATABASE CONNECTION ---
     @st.cache_data(ttl=600) 
@@ -141,15 +211,24 @@ if check_password():
 
     data = load_data_from_mysql()
 
-    # --- 4. TABS SETUP ---
+    # --- TABS SETUP ---
     tab1, tab2 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report"])
+
+    # --- APPLY SIDEBAR SOURCE FILTER ---
+    if not data.empty:
+        if source_filter != "All":
+            data = data[data['Lead_Type'] == source_filter]
+
+        # Convert Dates
+        data['CreatedOn_Date'] = pd.to_datetime(data['CreatedOn_Date'], errors='coerce').dt.date
+        data['Connected_Thirty_sec'] = pd.to_datetime(data['Connected_Thirty_sec'], errors='coerce').dt.date
+        data['Counselled_DT'] = pd.to_datetime(data['Counselled_DT'], errors='coerce').dt.date
+        data['Offer_DT'] = pd.to_datetime(data['Offer_DT'], errors='coerce').dt.date
+        data['Converted_DT'] = pd.to_datetime(data['Converted_DT'], errors='coerce').dt.date
 
     # --- TAB 1: Search aur Data Table ---
     with tab1:
-        st.header("AWS MySQL Database View")
-        
         if not data.empty:
-            st.success("✅ Database Connected Successfully!")
             search_query = st.text_input("Search any keyword...")
             
             if search_query:
@@ -165,26 +244,7 @@ if check_password():
 
     # --- TAB 2: Analytics Report ---
     with tab2:
-        st.header("📈 University Analytics Report")
-        
         if not data.empty:
-            data['CreatedOn_Date'] = pd.to_datetime(data['CreatedOn_Date'], errors='coerce').dt.date
-            data['Connected_Thirty_sec'] = pd.to_datetime(data['Connected_Thirty_sec'], errors='coerce').dt.date
-            data['Counselled_DT'] = pd.to_datetime(data['Counselled_DT'], errors='coerce').dt.date
-            data['Offer_DT'] = pd.to_datetime(data['Offer_DT'], errors='coerce').dt.date
-            data['Converted_DT'] = pd.to_datetime(data['Converted_DT'], errors='coerce').dt.date
-
-            st.subheader("🗓️ Select Date Range")
-            col1, col2 = st.columns(2)
-            
-            today = datetime.date.today()
-            first_day_of_month = today.replace(day=1)
-            
-            with col1:
-                start_date = st.date_input("Start Date", value=first_day_of_month)
-            with col2:
-                end_date = st.date_input("End Date", value=today)
-
             if start_date <= end_date:
                 mask_created = (data['CreatedOn_Date'] >= start_date) & (data['CreatedOn_Date'] <= end_date)
                 df_created = data[mask_created]
@@ -288,7 +348,6 @@ if check_password():
                     total_row['Counselled To Converted % SM'] = total_row['Converted SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
                     total_row['Lead To Converted % SM'] = total_row['Converted SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
 
-                    # CHANGE: Total row ko list ke shuru (Row 0) mein add karna
                     report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                     
                     styled_report = report_df.style.format({
@@ -306,5 +365,3 @@ if check_password():
                     st.info("In dates ke beech mein koi Lead Received nahi hui hai.")
             else:
                 st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
-        else:
-            st.warning("Data load nahi hua. Pehle Database connect karein.")
