@@ -143,6 +143,13 @@ if check_password():
     
     source_filter = st.sidebar.selectbox("Source", ["All", "FACEBOOK", "GOOGLE", "LINKEDIN"])
     
+    # OWNER FILTER (Dynamic rule implementation)
+    owner_filter = "All"
+    current_username = st.session_state["username"]
+    
+    if current_username not in ["hx1192", "hx1464", "hx0000"]:
+        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin Rawat", "Devender"])
+    
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
         st.query_params.clear()
@@ -151,9 +158,9 @@ if check_password():
 
     st.title("🎓 Degree Leads Analysis")
 
-    # --- DATABASE CONNECTION ---
+    # --- DATABASE CONNECTION WITH USER LOGIC ---
     @st.cache_data(ttl=600) 
-    def load_data_from_mysql():
+    def load_data_from_mysql(uname):
         try:
             conn = mysql.connector.connect(
                 host=st.secrets["mysql"]["host"],
@@ -163,7 +170,15 @@ if check_password():
                 password=st.secrets["mysql"]["password"]
             )
             
-            query = """
+            # Decide SQL tags dynamically based on exact user mapping
+            if uname in ['hx1192', 'hx1464']:
+                tags_condition = "('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE')"
+            elif uname == 'hx0000':
+                tags_condition = "('META-DEVENDER', 'GOOGLE-DEVENDER')"
+            else:
+                tags_condition = "('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE', 'META-DEVENDER', 'GOOGLE-DEVENDER')"
+            
+            query = f"""
             WITH T1 AS (
             SELECT DISTINCT
             c.id as ProspectID,
@@ -186,7 +201,7 @@ if check_password():
             DATE_FORMAT(DATE_ADD(DATE_ADD(cc.mx_contacted_timestamp_c , INTERVAL 5 HOUR), INTERVAL 30 MINUTE), '%Y-%m-%d') AS Connected_Thirty_sec,
             cc.mx_hyperlap_university_name_c as Hyperlap_University_Name,
             CASE
-        WHEN cc.lead_source_c LIKE '%Meta-Devendar%' THEN 'META-DEVENDAR'
+        WHEN cc.lead_source_c LIKE '%Meta-Devendar%' THEN 'META-DEVENDER'
         WHEN cc.lead_source_c LIKE '%Google-Devender%' THEN 'GOOGLE-DEVENDER'
         WHEN (cc.lead_source_c LIKE '%FB%' OR cc.lead_source_c LIKE '%Facebook%' OR cc.lead_source_c LIKE '%Clever%')
             AND cc.lead_source_c NOT LIKE '%Devender%' 
@@ -233,7 +248,7 @@ if check_password():
         T1.Hyperlap_University_Name,
         T1.Source_TAG
     FROM T1
-    Where T1.Source_TAG IN ('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE')
+    Where T1.Source_TAG IN {tags_condition}
     AND T1.Lead_Type IN ('FACEBOOK', 'GOOGLE', 'LINKEDIN')
     ORDER BY T1.CreatedOn_Date
             """
@@ -244,7 +259,8 @@ if check_password():
             st.error(f"Database connect error: {e}")
             return pd.DataFrame()
 
-    raw_data = load_data_from_mysql()
+    # Call function with current user to maintain strict DB rules
+    raw_data = load_data_from_mysql(current_username)
 
     tab1, tab2 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report"])
 
@@ -252,11 +268,17 @@ if check_password():
         # Master list of universities
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
         
-        # Apply Source Filter
+        # Apply Source Filter (Facebook, Google, LinkedIn)
         if source_filter != "All":
             filtered_data = raw_data[raw_data['Lead_Type'] == source_filter].copy()
         else:
             filtered_data = raw_data.copy()
+
+        # Apply Additional Owner Filter (For Admins/Others)
+        if owner_filter == "Vipin Rawat":
+            filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
+        elif owner_filter == "Devender":
+            filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
 
         # SAFE PANDAS NATIVE DATETIME CONVERSION
         date_cols = ['CreatedOn_Date', 'Connected_Thirty_sec', 'Counselled_DT', 'Offer_DT', 'Converted_DT']
