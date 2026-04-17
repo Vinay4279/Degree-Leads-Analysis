@@ -181,7 +181,7 @@ if check_password():
             query = f"""
             WITH T1 AS (
             SELECT DISTINCT
-            c.id as ProspectID,
+            c.id as Opp_ID,
             cc.prospectstage_c as ProspectStage,
             DATE_FORMAT(DATE_ADD(DATE_ADD(c.date_entered, INTERVAL 5 HOUR), INTERVAL 30 MINUTE), '%Y-%m-%d') AS CreatedOn_Date,
             cc.mx_program_details_c  AS LP_Name,
