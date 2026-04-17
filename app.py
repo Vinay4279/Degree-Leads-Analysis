@@ -118,8 +118,9 @@ def check_password():
             st.session_state["current_user"] = USERS[valid_user]["name"]
             st.session_state["login_time"] = login_time
 
+    # Use None instead of False to avoid showing error on first load
     if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
+        st.session_state["password_correct"] = None 
 
     def password_entered():
         uname = st.session_state["username_input"].strip().lower()
@@ -138,16 +139,25 @@ def check_password():
             
             del st.session_state["password_input"]  
         else:
-            st.session_state["password_correct"] = False
+            st.session_state["password_correct"] = False # Set to false ONLY on mismatch
 
-    if not st.session_state["password_correct"]:
-        st.markdown("<h1>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
-        st.text_input("Username", key="username_input")
-        st.text_input("Password", type="password", key="password_input")
-        st.button("Login", on_click=password_entered)
+    if not st.session_state.get("password_correct"):
+        # --- CENTER ALIGNED LOGIN PAGE UI ---
+        st.markdown("<br><br>", unsafe_allow_html=True) # Adds top spacing
         
-        if "password_correct" in st.session_state and st.session_state["password_correct"] == False:
-            st.error("😕 Invalid Username or Password")
+        col1, col2, col3 = st.columns([1, 1.5, 1]) # Creates a center column layout
+        
+        with col2:
+            st.markdown("<h3 style='text-align: center; color: #a0aec0; margin-bottom: -15px;'>Hero Vired Pvt Ltd.</h3>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; font-size: 32px;'>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
+            
+            st.text_input("Username", key="username_input")
+            st.text_input("Password", type="password", key="password_input")
+            st.button("Login", on_click=password_entered, use_container_width=True)
+            
+            # Error shows only if explicitly False (mismatch), not None (first load)
+            if st.session_state["password_correct"] == False:
+                st.error("😕 Invalid Username or Password")
         return False
     return True
 
