@@ -148,7 +148,7 @@ if check_password():
     current_username = st.session_state["username"]
     
     if current_username not in ["hx1192", "hx1464", "hx0000"]:
-        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin & Pramod", "Devender"])
+        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin Rawat", "Devender"])
     
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
@@ -181,7 +181,7 @@ if check_password():
             query = f"""
             WITH T1 AS (
             SELECT DISTINCT
-            c.id as Opp_ID,
+            c.id as ProspectID,
             cc.prospectstage_c as ProspectStage,
             DATE_FORMAT(DATE_ADD(DATE_ADD(c.date_entered, INTERVAL 5 HOUR), INTERVAL 30 MINUTE), '%Y-%m-%d') AS CreatedOn_Date,
             cc.mx_program_details_c  AS LP_Name,
@@ -235,7 +235,7 @@ if check_password():
     )
     )
     SELECT 
-        T1.Opp_ID,
+        T1.ProspectID,
         T1.ProspectStage,
         T1.CreatedOn_Date,
         T1.Lead_Source,
@@ -262,11 +262,13 @@ if check_password():
     # Call function with current user to maintain strict DB rules
     raw_data = load_data_from_mysql(current_username)
 
-    tab1, tab2 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report"])
+    # --- ADDED TAB 3 FOR CAMPAIGN ANALYTICS ---
+    tab1, tab2, tab3 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report"])
 
     if not raw_data.empty:
-        # Master list of universities
+        # Master list of universities & campaigns
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
+        all_campaigns = sorted(raw_data['Source_Campaign'].dropna().unique())
         
         # Apply Source Filter (Facebook, Google, LinkedIn)
         if source_filter != "All":
@@ -275,7 +277,7 @@ if check_password():
             filtered_data = raw_data.copy()
 
         # Apply Additional Owner Filter (For Admins/Others)
-        if owner_filter == "Vipin & Pramod":
+        if owner_filter == "Vipin Rawat":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
         elif owner_filter == "Devender":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
@@ -312,7 +314,7 @@ if check_password():
         else:
             st.warning("Data load nahi hua. Kripya apni SQL Query check karein.")
 
-    # --- TAB 2 ---
+    # --- TAB 2: UNIVERSITY ANALYTICS ---
     with tab2:
         if not raw_data.empty:
             if start_date <= end_date:
@@ -428,5 +430,123 @@ if check_password():
                 })
                 
                 st.dataframe(styled_report, use_container_width=True)
+            else:
+                st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
+
+    # --- TAB 3: CAMPAIGN ANALYTICS ---
+    with tab3:
+        if not raw_data.empty:
+            if start_date <= end_date:
+                
+                created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
+                df_created = filtered_data[created_mask]
+
+                report_data_camp = []
+
+                for camp in all_campaigns:
+                    df_camp_sm = df_created[df_created['Source_Campaign'] == camp]
+                    df_camp_overall = filtered_data[filtered_data['Source_Campaign'] == camp]
+                    
+                    lead_received = len(df_camp_sm)
+                    
+                    facebook_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'FACEBOOK'])
+                    google_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'GOOGLE'])
+                    linkedin_count = len(df_camp_sm[df_camp_sm['Lead_Type'] == 'LINKEDIN'])
+                    
+                    junk_sm_mask = df_camp_sm['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
+                    junk_sm = len(df_camp_sm[junk_sm_mask])
+                    junk_pct = junk_sm / lead_received if lead_received > 0 else 0
+                    
+                    junk_overall_mask = df_camp_overall['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
+                    junk_overall = len(df_camp_overall[junk_overall_mask])
+                    
+                    conn_30_sm_mask = (df_camp_sm['Connected_Thirty_sec'] >= start_ts) & (df_camp_sm['Connected_Thirty_sec'] <= end_ts)
+                    conn_30_sm = len(df_camp_sm[conn_30_sm_mask])
+                    conn_30_sm_pct = conn_30_sm / lead_received if lead_received > 0 else 0
+                    
+                    conn_overall_mask = (df_camp_overall['Connected_Thirty_sec'] >= start_ts) & (df_camp_overall['Connected_Thirty_sec'] <= end_ts)
+                    conn_30_overall = len(df_camp_overall[conn_overall_mask])
+
+                    couns_sm_mask = (df_camp_sm['Counselled_DT'] >= start_ts) & (df_camp_sm['Counselled_DT'] <= end_ts)
+                    couns_sm = len(df_camp_sm[couns_sm_mask])
+                    couns_sm_pct = couns_sm / conn_30_sm if conn_30_sm > 0 else 0
+
+                    couns_overall_mask = (df_camp_overall['Counselled_DT'] >= start_ts) & (df_camp_overall['Counselled_DT'] <= end_ts)
+                    couns_overall = len(df_camp_overall[couns_overall_mask])
+
+                    offer_sm_mask = (df_camp_sm['Offer_DT'] >= start_ts) & (df_camp_sm['Offer_DT'] <= end_ts)
+                    offer_sm = len(df_camp_sm[offer_sm_mask])
+
+                    offer_overall_mask = (df_camp_overall['Offer_DT'] >= start_ts) & (df_camp_overall['Offer_DT'] <= end_ts)
+                    offer_overall = len(df_camp_overall[offer_overall_mask])
+
+                    conv_sm_mask = (df_camp_sm['Converted_DT'] >= start_ts) & (df_camp_sm['Converted_DT'] <= end_ts)
+                    conv_sm = len(df_camp_sm[conv_sm_mask])
+
+                    conv_overall_mask = (df_camp_overall['Converted_DT'] >= start_ts) & (df_camp_overall['Converted_DT'] <= end_ts)
+                    conv_overall = len(df_camp_overall[conv_overall_mask])
+
+                    offer_to_couns_pct_sm = offer_sm / couns_sm if couns_sm > 0 else 0
+                    conv_to_offer_pct_sm = conv_sm / offer_sm if offer_sm > 0 else 0
+                    conv_to_couns_pct_sm = conv_sm / couns_sm if couns_sm > 0 else 0
+                    conv_to_lead_pct_sm = conv_sm / lead_received if lead_received > 0 else 0
+
+                    report_data_camp.append({
+                        "Source Campaign": camp,
+                        "Lead Received": lead_received,
+                        "Facebook": facebook_count,
+                        "Google": google_count,
+                        "LinkedIn": linkedin_count,
+                        "Junk SM": junk_sm,
+                        "Junk SM %": junk_pct,
+                        "Junk Overall": junk_overall,
+                        "Connected 30 Sec SM": conn_30_sm,
+                        "Connected 30 Sec SM %": conn_30_sm_pct,
+                        "Connected 30 Sec Overall": conn_30_overall,
+                        "Counselled SM": couns_sm,
+                        "Counselled SM %": couns_sm_pct,
+                        "Counselled Overall": couns_overall,
+                        "Offer SM": offer_sm,
+                        "Offer Overall": offer_overall,
+                        "Converted SM": conv_sm,
+                        "Converted Overall": conv_overall,
+                        "Offer To Counselled % SM": offer_to_couns_pct_sm,
+                        "Offer To Converted % SM": conv_to_offer_pct_sm,
+                        "Counselled To Converted % SM": conv_to_couns_pct_sm,
+                        "Lead To Converted % SM": conv_to_lead_pct_sm
+                    })
+
+                report_df_camp = pd.DataFrame(report_data_camp)
+                
+                # --- GRAND TOTAL ROW LOGIC FOR CAMPAIGN ---
+                total_row_camp = {'Source Campaign': 'Grand Total'}
+                sum_columns_camp = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
+                                'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
+                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
+                
+                for col in sum_columns_camp:
+                    total_row_camp[col] = report_df_camp[col].sum()
+                    
+                total_row_camp['Junk SM %'] = total_row_camp['Junk SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+                total_row_camp['Connected 30 Sec SM %'] = total_row_camp['Connected 30 Sec SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+                total_row_camp['Counselled SM %'] = total_row_camp['Counselled SM'] / total_row_camp['Connected 30 Sec SM'] if total_row_camp['Connected 30 Sec SM'] > 0 else 0
+                total_row_camp['Offer To Counselled % SM'] = total_row_camp['Offer SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
+                total_row_camp['Offer To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Offer SM'] if total_row_camp['Offer SM'] > 0 else 0
+                total_row_camp['Counselled To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
+                total_row_camp['Lead To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+
+                report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
+                
+                styled_report_camp = report_df_camp.style.format({
+                    "Junk SM %": "{:.2%}",
+                    "Connected 30 Sec SM %": "{:.2%}",
+                    "Counselled SM %": "{:.2%}",
+                    "Offer To Counselled % SM": "{:.2%}",
+                    "Offer To Converted % SM": "{:.2%}",
+                    "Counselled To Converted % SM": "{:.2%}",
+                    "Lead To Converted % SM": "{:.2%}"
+                })
+                
+                st.dataframe(styled_report_camp, use_container_width=True)
             else:
                 st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
