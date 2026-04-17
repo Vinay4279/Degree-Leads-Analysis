@@ -646,7 +646,7 @@ if check_password():
                 daily_report_data.append({
                     "HYPERLAP_UNIVERSITY_NAME": display_name,
                     "GOOGLE-DEVENDER": google_dev,
-                    "META-DEVENDAR": meta_dev, # Displaying exactly as per screenshot
+                    "META-DEVENDER": meta_dev, 
                     "GOOGLE INHOUSE": google_inhouse,
                     "META INHOUSE": meta_inhouse,
                     "LINKEDIN INHOUSE": linkedin_inhouse,
