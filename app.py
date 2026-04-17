@@ -53,6 +53,12 @@ st.markdown("""
         background-color: rgba(15, 23, 42, 0.8) !important;
     }
 
+    /* Hide the form border to maintain clean login UI */
+    [data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
+    }
+
     /* Premium DataFrames */
     .stDataFrame {
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -67,7 +73,7 @@ st.markdown("""
     }
 
     /* VIP Professional Buttons */
-    .stButton>button {
+    .stButton>button, .stFormSubmitButton>button {
         border-radius: 8px !important;
         font-weight: 600 !important;
         letter-spacing: 0.5px !important;
@@ -77,7 +83,7 @@ st.markdown("""
         transition: all 0.3s ease !important;
         padding: 10px 24px !important;
     }
-    .stButton>button:hover {
+    .stButton>button:hover, .stFormSubmitButton>button:hover {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
         color: #ffffff !important;
         border: 1px solid transparent !important;
@@ -186,7 +192,7 @@ def check_password():
             st.session_state["password_correct"] = False 
 
     if not st.session_state.get("password_correct"):
-        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI ---
+        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
         
         col1, col2, col3 = st.columns([1, 1.5, 1]) 
@@ -196,10 +202,12 @@ def check_password():
             st.markdown("<h1 style='text-align: center; font-size: 36px;'>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             
-            st.text_input("Username", key="username_input")
-            st.text_input("Password", type="password", key="password_input")
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("Secure Login", on_click=password_entered, use_container_width=True)
+            with st.form("login_form"):
+                st.text_input("Username", key="username_input")
+                st.text_input("Password", type="password", key="password_input")
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Form Submit Button automatically maps "Enter" key press perfectly without showing the hint text.
+                submitted = st.form_submit_button("Secure Login", use_container_width=True, on_click=password_entered)
             
             if st.session_state["password_correct"] == False:
                 st.error("😕 Invalid Username or Password")
@@ -451,7 +459,9 @@ if check_password():
                     tag_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
                     if date_col and uni_col and acc_col and tag_col:
                         enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
-                        enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col], errors='coerce').fillna(0)
+                        # Removed commas before casting to numeric to prevent string conversion crash
+                        enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                        
                         valid_tags = filtered_data['Source_TAG'].dropna().unique()
                         valid_tags_clean = [str(t).replace(' ', '').replace('-', '').upper() for t in valid_tags]
                         if 'METADEVENDER' in valid_tags_clean: valid_tags_clean.append('METADEVENDAR')
@@ -464,11 +474,12 @@ if check_password():
                     df_uni_sm = df_created[df_created['Hyperlap_University_Name'] == uni]
                     df_uni_overall = filtered_data[filtered_data['Hyperlap_University_Name'] == uni]
                     lead_received = len(df_uni_sm)
-                    booked_amount = 0
+                    
+                    booked_amount = 0.0
                     if not enrolled_filtered_tab2.empty:
                         clean_enrolled_unis = enrolled_filtered_tab2[uni_col].astype(str).str.replace('_', ' ').str.strip().str.upper().str.replace(' ', '', regex=False)
                         clean_uni = str(uni).replace('_', ' ').strip().upper().replace(' ', '')
-                        booked_amount = enrolled_filtered_tab2[clean_enrolled_unis == clean_uni][acc_col].sum()
+                        booked_amount = float(enrolled_filtered_tab2[clean_enrolled_unis == clean_uni][acc_col].sum())
                     
                     facebook_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'FACEBOOK'])
                     google_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'GOOGLE'])
@@ -534,7 +545,10 @@ if check_password():
                 if not gs_data.empty and all(col in gs_data.columns for col in ['Day', 'Cost', 'Campaign', 'Source']):
                     gs_data_safe = gs_data.copy()
                     gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
-                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
+                    
+                    # Removed commas before casting to numeric
+                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    
                     gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
                     gs_filtered = gs_data_safe[gs_mask].copy()
                     if source_filter != "All":
@@ -547,7 +561,7 @@ if check_password():
 
                 report_data_camp = []
                 for camp in all_campaigns_gs:
-                    camp_spend = gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum()
+                    camp_spend = float(gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum())
                     df_camp_sm = df_created[df_created['Source_Campaign'] == camp]
                     df_camp_overall = filtered_data[filtered_data['Source_Campaign'] == camp]
                     lead_received = len(df_camp_sm)
@@ -589,33 +603,48 @@ if check_password():
                 df_created = filtered_data[(filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)]
                 valid_unis_clean = [str(u).replace('_', ' ').strip().upper() for u in filtered_data['Hyperlap_University_Name'].dropna().unique()]
                 unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
+                
+                # --- CLEANING SPENDS DATA EXPLICITLY TO PREVENT STRING CRASHES ---
+                gs_inhouse_filtered = pd.DataFrame()
+                if not gs_data.empty and 'Day' in gs_data.columns and 'Cost' in gs_data.columns:
+                    temp_gs = gs_data.copy()
+                    temp_gs['Day'] = pd.to_datetime(temp_gs['Day'], errors='coerce').dt.date
+                    temp_gs['Cost'] = pd.to_numeric(temp_gs['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    gs_inhouse_filtered = temp_gs[(temp_gs['Day'] >= start_date) & (temp_gs['Day'] <= end_date)]
+
+                gs_dev_filtered = pd.DataFrame()
+                if not devender_data.empty and 'Date' in devender_data.columns:
+                    temp_dev = devender_data.copy()
+                    temp_dev['Date'] = pd.to_datetime(temp_dev['Date'], errors='coerce').dt.date
+                    if 'Google Spend' in temp_dev.columns:
+                        temp_dev['Google Spend'] = pd.to_numeric(temp_dev['Google Spend'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    if 'Facebook Spend' in temp_dev.columns:
+                        temp_dev['Facebook Spend'] = pd.to_numeric(temp_dev['Facebook Spend'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    gs_dev_filtered = temp_dev[(temp_dev['Date'] >= start_date) & (temp_dev['Date'] <= end_date)]
+                
                 roas_data = []
                 for tag in unique_tags:
-                    spend = 0; booked_amount = 0
+                    spend = 0.0
+                    booked_amount = 0.0
                     
-                    # Spend logic
-                    if tag == 'META INHOUSE' and not gs_data.empty and 'Source' in gs_data.columns and 'Cost' in gs_data.columns:
-                        gs_inhouse_filtered = gs_data[(pd.to_datetime(gs_data['Day'], errors='coerce').dt.date >= start_date) & (pd.to_datetime(gs_data['Day'], errors='coerce').dt.date <= end_date)]
-                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum()
-                    elif tag == 'GOOGLE INHOUSE' and not gs_data.empty and 'Source' in gs_data.columns and 'Cost' in gs_data.columns:
-                        gs_inhouse_filtered = gs_data[(pd.to_datetime(gs_data['Day'], errors='coerce').dt.date >= start_date) & (pd.to_datetime(gs_data['Day'], errors='coerce').dt.date <= end_date)]
-                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']['Cost'].sum()
-                    elif tag == 'LINKEDIN INHOUSE' and not gs_data.empty and 'Source' in gs_data.columns and 'Cost' in gs_data.columns:
-                        gs_inhouse_filtered = gs_data[(pd.to_datetime(gs_data['Day'], errors='coerce').dt.date >= start_date) & (pd.to_datetime(gs_data['Day'], errors='coerce').dt.date <= end_date)]
-                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]['Cost'].sum()
-                    elif tag == 'META-DEVENDER' and not devender_data.empty and 'Facebook Spend' in devender_data.columns:
-                        gs_dev_filtered = devender_data[(pd.to_datetime(devender_data['Date'], errors='coerce').dt.date >= start_date) & (pd.to_datetime(devender_data['Date'], errors='coerce').dt.date <= end_date)]
-                        spend = gs_dev_filtered['Facebook Spend'].sum()
-                    elif tag == 'GOOGLE-DEVENDER' and not devender_data.empty and 'Google Spend' in devender_data.columns:
-                        gs_dev_filtered = devender_data[(pd.to_datetime(devender_data['Date'], errors='coerce').dt.date >= start_date) & (pd.to_datetime(devender_data['Date'], errors='coerce').dt.date <= end_date)]
-                        spend = gs_dev_filtered['Google Spend'].sum()
+                    # Spend logic with float enforcement
+                    if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum())
+                    elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']['Cost'].sum())
+                    elif tag == 'LINKEDIN INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]['Cost'].sum())
+                    elif tag == 'META-DEVENDER' and not gs_dev_filtered.empty and 'Facebook Spend' in gs_dev_filtered.columns:
+                        spend = float(gs_dev_filtered['Facebook Spend'].sum())
+                    elif tag == 'GOOGLE-DEVENDER' and not gs_dev_filtered.empty and 'Google Spend' in gs_dev_filtered.columns:
+                        spend = float(gs_dev_filtered['Google Spend'].sum())
 
                     df_tag_sm = df_created[df_created['Source_TAG'] == tag]
                     lead_received = len(df_tag_sm)
                     conv_sm = len(df_tag_sm[(df_tag_sm['Converted_DT'] >= start_ts) & (df_tag_sm['Converted_DT'] <= end_ts)])
                     conv_ovr = len(filtered_data[(filtered_data['Source_TAG'] == tag) & (filtered_data['Converted_DT'] >= start_ts) & (filtered_data['Converted_DT'] <= end_ts)])
                     
-                    # Booked amount logic
+                    # Booked amount logic with comma stripping
                     if not enrolled_data.empty:
                         enr_data_safe = enrolled_data.copy()
                         date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
@@ -624,6 +653,8 @@ if check_password():
                         
                         if date_col and conv_col and acc_col:
                             enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
+                            enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                            
                             enrolled_filtered = enr_data_safe[(enr_data_safe[date_col] >= start_date) & (enr_data_safe[date_col] <= end_date)]
                             enrolled_tags = enrolled_filtered[conv_col].astype(str).str.strip().str.upper()
                             clean_enrolled = enrolled_tags.str.replace(' ', '', regex=False).str.replace('-', '', regex=False)
@@ -633,7 +664,7 @@ if check_password():
                             elif clean_tag in ['GOOGLEDEVENDER', 'GOOGLEDEVENDAR']: mask = clean_enrolled.isin(['GOOGLEDEVENDER', 'GOOGLEDEVENDAR'])
                             else: mask = clean_enrolled == clean_tag
                             
-                            booked_amount = pd.to_numeric(enrolled_filtered[mask][acc_col], errors='coerce').fillna(0).sum()
+                            booked_amount = float(enrolled_filtered[mask][acc_col].sum())
 
                     roas_data.append({"Source Tag": tag, "Spends": spend, "Lead Received": lead_received, "CPL": spend/lead_received if lead_received>0 else 0, "Converted SM": conv_sm, "Converted Overall": conv_ovr, "Booked Amount": booked_amount, "Booked ROAS": booked_amount/spend if spend>0 else 0, "CAC": spend/conv_ovr if conv_ovr>0 else 0, "Lead To Converted SM %": conv_sm/lead_received if lead_received>0 else 0, "Lead To Converted Overall %": conv_ovr/lead_received if lead_received>0 else 0})
                 
