@@ -274,8 +274,8 @@ if check_password():
     raw_data = load_data_from_mysql(current_username)
     gs_data = load_google_sheet()
 
-    # --- TABS ---
-    tab1, tab2, tab3 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report"])
+    # --- TABS (NOW WITH 4th TAB FOR DAILY LEADS) ---
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report", "📊 Daily Lead Received"])
 
     if not raw_data.empty:
         # Master list of universities
@@ -591,3 +591,68 @@ if check_password():
                     st.dataframe(styled_report_camp, use_container_width=True)
                 else:
                     st.info("No Campaign Data found for the selected date range. Please verify the Google Sheet.")
+
+    # --- TAB 4: DAILY LEAD RECEIVED (PRESENT DAY ONLY) ---
+    with tab4:
+        if not raw_data.empty:
+            # Explicitly force this tab to strictly use 'Today's date only.
+            today_ts = pd.to_datetime(datetime.date.today())
+            st.subheader(f"📅 Daily Leads Received (Today: {today_ts.strftime('%d %b %Y')})")
+            
+            # Filter strictly for today
+            df_today = filtered_data[filtered_data['CreatedOn_Date'] == today_ts]
+            
+            # Master list of requested universities with their display names and search keywords
+            uni_mapping = {
+                "ALLIANCE UNIVERSITY": "alliance",
+                "AMITY UNIVERSITY": "amity",
+                "BHARATI VIDYAPEETH UNIVERSITY": "bharati",
+                "DR. D Y PATIL UNIVERSITY": "patil",
+                "GALGOTIAS UNIVERSITY": "galgotias",
+                "GENERIC UNIVERSITY": "generic",
+                "GLA UNIVERSITY": "gla",
+                "LOVELY PROFESSIONAL UNIVERSITY": "lovely",
+                "MANIPAL UNIVERSITY": "manipal",
+                "NMIMS": "nmims",
+                "SHOOLINI UNIVERSITY": "shoolini",
+                "UTTARANCHAL UNIVERSITY": "uttaranchal"
+            }
+            
+            daily_report_data = []
+            
+            for display_name, search_key in uni_mapping.items():
+                # Case-insensitive search for university
+                mask = df_today['Hyperlap_University_Name'].astype(str).str.contains(search_key, case=False, na=False)
+                df_uni_today = df_today[mask]
+                
+                # Fetch counts per requested source tags
+                google_dev = len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE-DEVENDER'])
+                meta_dev = len(df_uni_today[df_uni_today['Source_TAG'] == 'META-DEVENDER'])
+                google_inhouse = len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE INHOUSE'])
+                meta_inhouse = len(df_uni_today[df_uni_today['Source_TAG'] == 'META INHOUSE'])
+                linkedin_inhouse = len(df_uni_today[df_uni_today['Source_TAG'] == 'LINKEDIN INHOUSE'])
+                
+                total_leads = google_dev + meta_dev + google_inhouse + meta_inhouse + linkedin_inhouse
+                
+                daily_report_data.append({
+                    "HYPERLAP_UNIVERSITY_NAME": display_name,
+                    "GOOGLE-DEVENDER": google_dev,
+                    "META-DEVENDAR": meta_dev, # Displaying exactly as per screenshot
+                    "GOOGLE INHOUSE": google_inhouse,
+                    "META INHOUSE": meta_inhouse,
+                    "LINKEDIN INHOUSE": linkedin_inhouse,
+                    "TOTAL LEADS": total_leads
+                })
+                
+            df_daily = pd.DataFrame(daily_report_data)
+            
+            # Add Grand Total Row (Bottom White Arrow Location)
+            total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
+            sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDAR", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
+            
+            for col in sum_cols_daily:
+                total_row_daily[col] = df_daily[col].sum()
+                
+            df_daily = pd.concat([df_daily, pd.DataFrame([total_row_daily])], ignore_index=True)
+            
+            st.dataframe(df_daily, use_container_width=True)
