@@ -657,7 +657,7 @@ if check_password():
             
             # Add Grand Total Row (Bottom White Arrow Location)
             total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
-            sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDAR", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
+            sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
             
             for col in sum_cols_daily:
                 total_row_daily[col] = df_daily[col].sum()
