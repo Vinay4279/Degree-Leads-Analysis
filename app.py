@@ -196,6 +196,7 @@ if check_password():
             Case 
             When cc.lead_source_c LIKE '%FB%' Then 'FACEBOOK'
             When cc.lead_source_c LIKE '%Facebook%' Then 'FACEBOOK'
+            When cc.lead_source_c LIKE '%Meta%' Then 'FACEBOOK'
             When cc.lead_source_c LIKE '%Google%' Then 'GOOGLE'
             When cc.lead_source_c LIKE '%fmc-website%' Then 'GOOGLE'
             When cc.lead_source_c LIKE '%Inbound Phone call%' Then 'GOOGLE'     
@@ -646,7 +647,7 @@ if check_password():
                 daily_report_data.append({
                     "HYPERLAP_UNIVERSITY_NAME": display_name,
                     "GOOGLE-DEVENDER": google_dev,
-                    "META-DEVENDER": meta_dev, 
+                    "META-DEVENDER": meta_dev, # Fixed spelling from DEVENDAR to match screenshot & tag
                     "GOOGLE INHOUSE": google_inhouse,
                     "META INHOUSE": meta_inhouse,
                     "LINKEDIN INHOUSE": linkedin_inhouse,
