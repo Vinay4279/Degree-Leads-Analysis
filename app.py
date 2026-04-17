@@ -457,9 +457,19 @@ if check_password():
                     gs_data['Cost'] = pd.to_numeric(gs_data['Cost'], errors='coerce').fillna(0)
                     
                     gs_mask = (gs_data['Day'] >= start_date) & (gs_data['Day'] <= end_date)
-                    gs_filtered = gs_data[gs_mask]
+                    gs_filtered = gs_data[gs_mask].copy()
                     
-                    # Extract unique campaigns directly from the Google Sheet based on Date Range
+                    # --- NEW LOGIC: Map Dashboard Source to Google Sheet Source ---
+                    if source_filter != "All":
+                        if source_filter == "GOOGLE":
+                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
+                        elif source_filter == "FACEBOOK":
+                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']
+                        elif source_filter == "LINKEDIN":
+                            # Safe fallback for LinkedIn
+                            gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]
+                    
+                    # Extract unique campaigns directly from the dynamically filtered Google Sheet
                     all_campaigns_gs = sorted(gs_filtered['Campaign'].dropna().unique())
                 else:
                     gs_filtered = pd.DataFrame()
@@ -468,7 +478,7 @@ if check_password():
                 report_data_camp = []
 
                 for camp in all_campaigns_gs:
-                    # Spend Calculation from Google Sheet
+                    # Spend Calculation from appropriately filtered Google Sheet
                     camp_spend = gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum()
                     
                     # Lead metrics from MySQL Dashboard Data
