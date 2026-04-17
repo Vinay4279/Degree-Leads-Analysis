@@ -148,7 +148,7 @@ if check_password():
     current_username = st.session_state["username"]
     
     if current_username not in ["hx1192", "hx1464", "hx0000"]:
-        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin Rawat", "Devender"])
+        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin & Pramod", "Devender"])
     
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
@@ -275,7 +275,7 @@ if check_password():
             filtered_data = raw_data.copy()
 
         # Apply Additional Owner Filter (For Admins/Others)
-        if owner_filter == "Vipin Rawat":
+        if owner_filter == "Vipin & Pramod":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
         elif owner_filter == "Devender":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
