@@ -4,6 +4,9 @@ import mysql.connector
 import datetime
 import base64
 
+# --- Define image URL for Hero Vired ---
+HERO_VIRED_LOGO_URL = "https://static.punemirror.com/full/7cb39710-7074-49f7-9f3c-9667b666f70e.jpg"
+
 # --- 1. PAGE CONFIGURATION & PROFESSIONAL UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
@@ -167,7 +170,8 @@ if check_password():
     
     # --- SIDEBAR ---
     st.sidebar.markdown("<div style='margin-top: -10px; margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
-    st.sidebar.title("Navigations")
+    # REPLACE: st.sidebar.title("Navigations")
+    st.sidebar.title("Hero Vired Pvt Ltd.")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     
     # --- ADDED: FIRST LOGIN TIME TRACKER ---
@@ -204,6 +208,8 @@ if check_password():
         st.session_state.clear()
         st.rerun()
 
+    # --- ADDED: MAIN AREA LOGO ---
+    st.image(HERO_VIRED_LOGO_URL, width=150)
     st.title("🎓 Degree Leads Analysis")
 
     # --- DATABASE & GOOGLE SHEET CONNECTION ---
@@ -915,8 +921,8 @@ if check_password():
                         total_row[col] = roas_df[col].sum()
                         
                     # Re-calculate ratios for Grand Total
-                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
                     total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
                     total_row["Lead To Converted SM %"] = total_row["Converted SM"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
