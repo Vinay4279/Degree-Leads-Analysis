@@ -148,7 +148,7 @@ if check_password():
     current_username = st.session_state["username"]
     
     if current_username not in ["hx1192", "hx1464", "hx0000"]:
-        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin Rawat", "Devender"])
+        owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin & Pramod", "Devender"])
     
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
@@ -158,7 +158,7 @@ if check_password():
 
     st.title("🎓 Degree Leads Analysis")
 
-    # --- DATABASE CONNECTION WITH USER LOGIC ---
+    # --- DATABASE & GOOGLE SHEET CONNECTION ---
     @st.cache_data(ttl=600) 
     def load_data_from_mysql(uname):
         try:
@@ -259,16 +259,27 @@ if check_password():
             st.error(f"Database connect error: {e}")
             return pd.DataFrame()
 
-    # Call function with current user to maintain strict DB rules
-    raw_data = load_data_from_mysql(current_username)
+    @st.cache_data(ttl=600)
+    def load_google_sheet():
+        sheet_url = "https://docs.google.com/spreadsheets/d/1dD2DmVLAMOkdCe1dwUAO9eX5S5_31ikovd0UyoYDiZI/export?format=csv&gid=945195723"
+        try:
+            df = pd.read_csv(sheet_url)
+            df.columns = df.columns.str.strip()
+            return df
+        except Exception as e:
+            st.error(f"Failed to load Google Sheet (Check if the link is accessible to anyone): {e}")
+            return pd.DataFrame()
 
-    # --- ADDED TAB 3 FOR CAMPAIGN ANALYTICS ---
+    # Call functions with current user to maintain strict DB rules
+    raw_data = load_data_from_mysql(current_username)
+    gs_data = load_google_sheet()
+
+    # --- TABS ---
     tab1, tab2, tab3 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report"])
 
     if not raw_data.empty:
-        # Master list of universities & campaigns
+        # Master list of universities
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
-        all_campaigns = sorted(raw_data['Source_Campaign'].dropna().unique())
         
         # Apply Source Filter (Facebook, Google, LinkedIn)
         if source_filter != "All":
@@ -277,7 +288,7 @@ if check_password():
             filtered_data = raw_data.copy()
 
         # Apply Additional Owner Filter (For Admins/Others)
-        if owner_filter == "Vipin Rawat":
+        if owner_filter == "Vipin & Pramod":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
         elif owner_filter == "Devender":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
@@ -319,7 +330,6 @@ if check_password():
         if not raw_data.empty:
             if start_date <= end_date:
                 
-                # Safely mask data using Pandas native datetime checks
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
@@ -433,7 +443,7 @@ if check_password():
             else:
                 st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
 
-    # --- TAB 3: CAMPAIGN ANALYTICS ---
+    # --- TAB 3: CAMPAIGN ANALYTICS (WITH GOOGLE SHEET INTEGRATION) ---
     with tab3:
         if not raw_data.empty:
             if start_date <= end_date:
@@ -441,9 +451,27 @@ if check_password():
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
+                # Google Sheet filtering logic
+                if not gs_data.empty:
+                    gs_data['Day'] = pd.to_datetime(gs_data['Day'], errors='coerce').dt.date
+                    gs_data['Cost'] = pd.to_numeric(gs_data['Cost'], errors='coerce').fillna(0)
+                    
+                    gs_mask = (gs_data['Day'] >= start_date) & (gs_data['Day'] <= end_date)
+                    gs_filtered = gs_data[gs_mask]
+                    
+                    # Extract unique campaigns directly from the Google Sheet based on Date Range
+                    all_campaigns_gs = sorted(gs_filtered['Campaign'].dropna().unique())
+                else:
+                    gs_filtered = pd.DataFrame()
+                    all_campaigns_gs = []
+
                 report_data_camp = []
 
-                for camp in all_campaigns:
+                for camp in all_campaigns_gs:
+                    # Spend Calculation from Google Sheet
+                    camp_spend = gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum()
+                    
+                    # Lead metrics from MySQL Dashboard Data
                     df_camp_sm = df_created[df_created['Source_Campaign'] == camp]
                     df_camp_overall = filtered_data[filtered_data['Source_Campaign'] == camp]
                     
@@ -493,6 +521,7 @@ if check_password():
 
                     report_data_camp.append({
                         "Source Campaign": camp,
+                        "Spend": camp_spend,
                         "Lead Received": lead_received,
                         "Facebook": facebook_count,
                         "Google": google_count,
@@ -516,37 +545,38 @@ if check_password():
                         "Lead To Converted % SM": conv_to_lead_pct_sm
                     })
 
-                report_df_camp = pd.DataFrame(report_data_camp)
-                
-                # --- GRAND TOTAL ROW LOGIC FOR CAMPAIGN ---
-                total_row_camp = {'Source Campaign': 'Grand Total'}
-                sum_columns_camp = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
-                                'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
-                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
-                
-                for col in sum_columns_camp:
-                    total_row_camp[col] = report_df_camp[col].sum()
+                if report_data_camp:
+                    report_df_camp = pd.DataFrame(report_data_camp)
                     
-                total_row_camp['Junk SM %'] = total_row_camp['Junk SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
-                total_row_camp['Connected 30 Sec SM %'] = total_row_camp['Connected 30 Sec SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
-                total_row_camp['Counselled SM %'] = total_row_camp['Counselled SM'] / total_row_camp['Connected 30 Sec SM'] if total_row_camp['Connected 30 Sec SM'] > 0 else 0
-                total_row_camp['Offer To Counselled % SM'] = total_row_camp['Offer SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
-                total_row_camp['Offer To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Offer SM'] if total_row_camp['Offer SM'] > 0 else 0
-                total_row_camp['Counselled To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
-                total_row_camp['Lead To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+                    # --- GRAND TOTAL ROW LOGIC FOR CAMPAIGN ---
+                    total_row_camp = {'Source Campaign': 'Grand Total'}
+                    sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
+                                    'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
+                                    'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
+                    
+                    for col in sum_columns_camp:
+                        total_row_camp[col] = report_df_camp[col].sum()
+                        
+                    total_row_camp['Junk SM %'] = total_row_camp['Junk SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+                    total_row_camp['Connected 30 Sec SM %'] = total_row_camp['Connected 30 Sec SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
+                    total_row_camp['Counselled SM %'] = total_row_camp['Counselled SM'] / total_row_camp['Connected 30 Sec SM'] if total_row_camp['Connected 30 Sec SM'] > 0 else 0
+                    total_row_camp['Offer To Counselled % SM'] = total_row_camp['Offer SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
+                    total_row_camp['Offer To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Offer SM'] if total_row_camp['Offer SM'] > 0 else 0
+                    total_row_camp['Counselled To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Counselled SM'] if total_row_camp['Counselled SM'] > 0 else 0
+                    total_row_camp['Lead To Converted % SM'] = total_row_camp['Converted SM'] / total_row_camp['Lead Received'] if total_row_camp['Lead Received'] > 0 else 0
 
-                report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
-                
-                styled_report_camp = report_df_camp.style.format({
-                    "Junk SM %": "{:.2%}",
-                    "Connected 30 Sec SM %": "{:.2%}",
-                    "Counselled SM %": "{:.2%}",
-                    "Offer To Counselled % SM": "{:.2%}",
-                    "Offer To Converted % SM": "{:.2%}",
-                    "Counselled To Converted % SM": "{:.2%}",
-                    "Lead To Converted % SM": "{:.2%}"
-                })
-                
-                st.dataframe(styled_report_camp, use_container_width=True)
-            else:
-                st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
+                    report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
+                    
+                    styled_report_camp = report_df_camp.style.format({
+                        "Junk SM %": "{:.2%}",
+                        "Connected 30 Sec SM %": "{:.2%}",
+                        "Counselled SM %": "{:.2%}",
+                        "Offer To Counselled % SM": "{:.2%}",
+                        "Offer To Converted % SM": "{:.2%}",
+                        "Counselled To Converted % SM": "{:.2%}",
+                        "Lead To Converted % SM": "{:.2%}"
+                    })
+                    
+                    st.dataframe(styled_report_camp, use_container_width=True)
+                else:
+                    st.info("In dates ke beech mein koi Campaign Data nahi mila (Google Sheet check karein).")
