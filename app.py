@@ -277,12 +277,36 @@ if check_password():
             st.error(f"Failed to load Google Sheet (Check if the link is accessible to anyone): {e}")
             return pd.DataFrame()
 
+    @st.cache_data(ttl=600)
+    def load_devender_spends():
+        sheet_url = "https://docs.google.com/spreadsheets/d/1KJ--JKXJqtP_yTiW-Ok0PpIADv9AXyagspFfZBiYChY/export?format=csv&gid=1016805741"
+        try:
+            df = pd.read_csv(sheet_url)
+            df.columns = df.columns.str.strip()
+            return df
+        except Exception as e:
+            st.error(f"Failed to load Devender Spends Sheet: {e}")
+            return pd.DataFrame()
+
+    @st.cache_data(ttl=600)
+    def load_enrolled_data():
+        sheet_url = "https://docs.google.com/spreadsheets/d/1hMcaFk4l9xmOUK6lB0LgpWMbHZkLDrMzzQUi8oBX6J8/export?format=csv&gid=0"
+        try:
+            df = pd.read_csv(sheet_url)
+            df.columns = df.columns.str.strip()
+            return df
+        except Exception as e:
+            st.error(f"Failed to load Enrolled Data Sheet: {e}")
+            return pd.DataFrame()
+
     # Call functions with current user to maintain strict DB rules
     raw_data = load_data_from_mysql(current_username)
     gs_data = load_google_sheet()
+    devender_data = load_devender_spends()
+    enrolled_data = load_enrolled_data()
 
-    # --- TABS (NOW WITH 4th TAB FOR DAILY LEADS) ---
-    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report", "📊 Daily Lead Received"])
+    # --- TABS (NOW WITH 5 TABS INCLUDING ROAS) ---
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report", "📈 Campaign Analytics Report", "📊 Daily Lead Received", "💰 ROAS Dashboard"])
 
     if not raw_data.empty:
         # Master list of universities
@@ -667,3 +691,134 @@ if check_password():
             
             # Dynamic Height logic
             st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
+
+    # --- TAB 5: ROAS DASHBOARD ---
+    with tab5:
+        if not raw_data.empty:
+            if start_date <= end_date:
+                # 1. Filter Main MySQL Data
+                created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
+                df_created = filtered_data[created_mask]
+                
+                # Fetch dynamically valid universities from filtered dataset to ensure correct matching
+                valid_unis = filtered_data['Hyperlap_University_Name'].dropna().unique()
+
+                # 2. Setup Google Sheet 1 (Inhouse Spends) safely
+                gs_inhouse_filtered = pd.DataFrame()
+                if not gs_data.empty:
+                    gs_data_safe = gs_data.copy()
+                    gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
+                    gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'], errors='coerce').fillna(0)
+                    gs_inhouse_filtered = gs_data_safe[(gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)]
+
+                # 3. Setup Google Sheet 2 (Devender Spends) safely
+                gs_dev_filtered = pd.DataFrame()
+                if not devender_data.empty:
+                    dev_data_safe = devender_data.copy()
+                    dev_data_safe['Date'] = pd.to_datetime(dev_data_safe['Date'], errors='coerce').dt.date
+                    dev_data_safe['Google Spend'] = pd.to_numeric(dev_data_safe['Google Spend'], errors='coerce').fillna(0)
+                    dev_data_safe['Facebook Spend'] = pd.to_numeric(dev_data_safe['Facebook Spend'], errors='coerce').fillna(0)
+                    gs_dev_filtered = dev_data_safe[(dev_data_safe['Date'] >= start_date) & (dev_data_safe['Date'] <= end_date)]
+
+                # 4. Setup Google Sheet 3 (Enrolled Data) safely
+                enrolled_filtered = pd.DataFrame()
+                if not enrolled_data.empty:
+                    enr_data_safe = enrolled_data.copy()
+                    enr_data_safe['Converted Date'] = pd.to_datetime(enr_data_safe['Converted Date'], errors='coerce').dt.date
+                    enr_data_safe['Total Accrued Amount'] = pd.to_numeric(enr_data_safe['Total Accrued Amount'], errors='coerce').fillna(0)
+                    
+                    # Match Start/End Date AND Ensure University matches the Dashboard's current view
+                    enrolled_filtered = enr_data_safe[
+                        (enr_data_safe['Converted Date'] >= start_date) & 
+                        (enr_data_safe['Converted Date'] <= end_date) & 
+                        (enr_data_safe['Enrolled University'].isin(valid_unis))
+                    ]
+
+                # Get unique Source TAGs to iterate through
+                unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
+                
+                roas_data = []
+
+                for tag in unique_tags:
+                    # Calculate Individual Spends based on TAG
+                    spend = 0
+                    if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum()
+                    elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']['Cost'].sum()
+                    elif tag == 'LINKEDIN INHOUSE' and not gs_inhouse_filtered.empty:
+                        spend = gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper().str.contains('LINKEDIN', na=False)]['Cost'].sum()
+                    elif tag == 'META-DEVENDER' and not gs_dev_filtered.empty:
+                        spend = gs_dev_filtered['Facebook Spend'].sum()
+                    elif tag == 'GOOGLE-DEVENDER' and not gs_dev_filtered.empty:
+                        spend = gs_dev_filtered['Google Spend'].sum()
+
+                    # Calculate MySQL Lead Metrics
+                    df_tag_sm = df_created[df_created['Source_TAG'] == tag]
+                    df_tag_overall = filtered_data[filtered_data['Source_TAG'] == tag]
+                    
+                    lead_received = len(df_tag_sm)
+                    
+                    conv_sm_mask = (df_tag_sm['Converted_DT'] >= start_ts) & (df_tag_sm['Converted_DT'] <= end_ts)
+                    conv_sm = len(df_tag_sm[conv_sm_mask])
+                    
+                    conv_overall_mask = (df_tag_overall['Converted_DT'] >= start_ts) & (df_tag_overall['Converted_DT'] <= end_ts)
+                    conv_overall = len(df_tag_overall[conv_overall_mask])
+
+                    # Calculate Booked Amount from Enrolled Data Sheet
+                    booked_amount = 0
+                    if not enrolled_filtered.empty:
+                        booked_amount = enrolled_filtered[enrolled_filtered['Converted Source TAG'].astype(str).str.strip().str.upper() == tag.upper()]['Total Accrued Amount'].sum()
+
+                    # Derived ROAS Formulas
+                    booked_roas = booked_amount / spend if spend > 0 else 0
+                    cpl = spend / lead_received if lead_received > 0 else 0
+                    ltc_pct = conv_overall / lead_received if lead_received > 0 else 0
+                    cac = spend / conv_overall if conv_overall > 0 else 0
+
+                    roas_data.append({
+                        "Source Tag": tag,
+                        "Spends": spend,
+                        "Booked Amount": booked_amount,
+                        "Booked ROAS": booked_roas,
+                        "Lead Received": lead_received,
+                        "CPL": cpl,
+                        "Converted SM": conv_sm,
+                        "Converted Overall": conv_overall,
+                        "Lead To Converted Overall %": ltc_pct,
+                        "CAC": cac
+                    })
+
+                if roas_data:
+                    roas_df = pd.DataFrame(roas_data)
+                    
+                    # Grand Total Row for ROAS
+                    total_row = {"Source Tag": "GRAND TOTAL"}
+                    sum_cols = ["Spends", "Booked Amount", "Lead Received", "Converted SM", "Converted Overall"]
+                    for col in sum_cols:
+                        total_row[col] = roas_df[col].sum()
+                        
+                    # Re-calculate ratios for Grand Total
+                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
+                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
+                    
+                    roas_df = pd.concat([roas_df, pd.DataFrame([total_row])], ignore_index=True)
+                    
+                    # Number Formatting
+                    styled_roas = roas_df.style.format({
+                        "Spends": "{:.2f}",
+                        "Booked Amount": "{:.2f}",
+                        "Booked ROAS": "{:.2f}",
+                        "CPL": "{:.2f}",
+                        "Lead To Converted Overall %": "{:.2%}",
+                        "CAC": "{:.2f}"
+                    })
+                    
+                    # Dynamic Height logic
+                    st.dataframe(styled_roas, use_container_width=True, height=min(750, (len(roas_df) + 1) * 36 + 10))
+                else:
+                    st.info("No data available for ROAS Dashboard in the selected date range.")
+            else:
+                st.error("❌ End Date cannot be earlier than the Start Date!")
