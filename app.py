@@ -116,8 +116,8 @@ if check_password():
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                /* Hides the Streamlit top right menu (Manage App, GitHub, etc.) */
-                header[data-testid="stHeader"] {
+                /* Hides ONLY the Streamlit top right menu (Manage App, GitHub, etc.), keeping Sidebar Toggle safe */
+                [data-testid="stToolbar"] {
                     display: none !important;
                 }
             </style>
