@@ -472,7 +472,7 @@ if check_password():
                         "Offer Overall": offer_overall,
                         "Converted SM": conv_sm,
                         "Converted Overall": conv_overall,
-                        "Booked Amount": booked_amount,  # <--- MOVED HERE
+                        "Booked Amount": booked_amount,
                         "Offer To Counselled % SM": offer_to_couns_pct_sm,
                         "Offer To Converted % SM": conv_to_offer_pct_sm,
                         "Counselled To Converted % SM": conv_to_couns_pct_sm,
@@ -845,20 +845,22 @@ if check_password():
                     # Derived ROAS Formulas
                     booked_roas = booked_amount / spend if spend > 0 else 0
                     cpl = spend / lead_received if lead_received > 0 else 0
+                    ltc_sm_pct = conv_sm / lead_received if lead_received > 0 else 0
                     ltc_pct = conv_overall / lead_received if lead_received > 0 else 0
                     cac = spend / conv_overall if conv_overall > 0 else 0
 
                     roas_data.append({
                         "Source Tag": tag,
                         "Spends": spend,
-                        "Booked Amount": booked_amount,
-                        "Booked ROAS": booked_roas,
                         "Lead Received": lead_received,
                         "CPL": cpl,
                         "Converted SM": conv_sm,
                         "Converted Overall": conv_overall,
-                        "Lead To Converted Overall %": ltc_pct,
-                        "CAC": cac
+                        "Booked Amount": booked_amount,
+                        "Booked ROAS": booked_roas,
+                        "CAC": cac,
+                        "Lead To Converted SM %": ltc_sm_pct,
+                        "Lead To Converted Overall %": ltc_pct
                     })
 
                 if roas_data:
@@ -866,26 +868,36 @@ if check_password():
                     
                     # Grand Total Row for ROAS
                     total_row = {"Source Tag": "GRAND TOTAL"}
-                    sum_cols = ["Spends", "Booked Amount", "Lead Received", "Converted SM", "Converted Overall"]
+                    sum_cols = ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]
                     for col in sum_cols:
                         total_row[col] = roas_df[col].sum()
                         
                     # Re-calculate ratios for Grand Total
-                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
                     total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
-                    total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
                     total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
+                    total_row["Lead To Converted SM %"] = total_row["Converted SM"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     
                     roas_df = pd.concat([roas_df, pd.DataFrame([total_row])], ignore_index=True)
+                    
+                    # Reorder columns explicitly to match user sequence requirement
+                    col_order = [
+                        "Source Tag", "Spends", "Lead Received", "CPL", "Converted SM", 
+                        "Converted Overall", "Booked Amount", "Booked ROAS", "CAC", 
+                        "Lead To Converted SM %", "Lead To Converted Overall %"
+                    ]
+                    roas_df = roas_df[col_order]
                     
                     # Number Formatting
                     styled_roas = roas_df.style.format({
                         "Spends": "{:.2f}",
+                        "CPL": "{:.2f}",
                         "Booked Amount": "{:.2f}",
                         "Booked ROAS": "{:.2f}",
-                        "CPL": "{:.2f}",
-                        "Lead To Converted Overall %": "{:.2%}",
-                        "CAC": "{:.2f}"
+                        "CAC": "{:.2f}",
+                        "Lead To Converted SM %": "{:.2%}",
+                        "Lead To Converted Overall %": "{:.2%}"
                     })
                     
                     # Dynamic Height logic
