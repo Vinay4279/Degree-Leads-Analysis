@@ -320,12 +320,13 @@ if check_password():
                 display_df = search_df.copy()
                 for col in date_cols:
                     display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True, height=750)
+                # Dynamic Height logic
+                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
             else:
                 display_df = filtered_data.copy()
                 for col in date_cols:
                     display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True, height=750)
+                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
                 
             st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
@@ -445,7 +446,8 @@ if check_password():
                     "Lead To Converted % SM": "{:.2%}"
                 })
                 
-                st.dataframe(styled_report, use_container_width=True, height=750)
+                # Dynamic Height logic
+                st.dataframe(styled_report, use_container_width=True, height=min(750, (len(report_df) + 1) * 36 + 10))
             else:
                 st.error("❌ End Date cannot be earlier than the Start Date!")
 
@@ -594,7 +596,8 @@ if check_password():
                         "Lead To Converted % SM": "{:.2%}"
                     })
                     
-                    st.dataframe(styled_report_camp, use_container_width=True, height=750)
+                    # Dynamic Height logic
+                    st.dataframe(styled_report_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
                 else:
                     st.info("No Campaign Data found for the selected date range. Please verify the Google Sheet.")
 
@@ -661,4 +664,5 @@ if check_password():
                 
             df_daily = pd.concat([df_daily, pd.DataFrame([total_row_daily])], ignore_index=True)
             
-            st.dataframe(df_daily, use_container_width=True, height=600)
+            # Dynamic Height logic
+            st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
