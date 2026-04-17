@@ -53,7 +53,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ADVANCED LOGIN SYSTEM (Till Midnight Persistence) ---
+# --- 2. ADVANCED LOGIN SYSTEM (Till Midnight Persistence & Time Tracking) ---
 USERS = {
     "hx1001": {"pwd": "hx1001", "name": "Vipul Bhatnagar"},
     "hx1192": {"pwd": "hx1192", "name": "Vipin Rawat"},
@@ -63,29 +63,39 @@ USERS = {
 }
 
 def generate_token(uname):
-    """Generates a token valid only for today"""
-    raw = f"{uname}|{datetime.date.today()}"
+    """Generates a token valid only for today, including initial login timestamp"""
+    login_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
 def verify_token(token):
-    """Checks if token is valid and belongs to today"""
+    """Checks if token is valid, belongs to today, and extracts login time"""
     try:
         raw = base64.b64decode(token).decode()
-        uname, date_str = raw.split("|")
-        if date_str == str(datetime.date.today()) and uname in USERS:
-            return uname
+        parts = raw.split("|")
+        # New token format with time
+        if len(parts) == 3:
+            uname, date_str, login_time = parts
+            if date_str == str(datetime.date.today()) and uname in USERS:
+                return uname, login_time
+        # Fallback for old active tokens (just in case)
+        elif len(parts) == 2:
+            uname, date_str = parts
+            if date_str == str(datetime.date.today()) and uname in USERS:
+                return uname, "Session Started Today"
     except:
         pass
-    return None
+    return None, None
 
 def check_password():
     # Check if a valid token already exists in URL (for browser refresh)
     if "token" in st.query_params:
-        valid_user = verify_token(st.query_params["token"])
+        valid_user, login_time = verify_token(st.query_params["token"])
         if valid_user:
             st.session_state["password_correct"] = True
             st.session_state["username"] = valid_user
             st.session_state["current_user"] = USERS[valid_user]["name"]
+            st.session_state["login_time"] = login_time
 
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
@@ -98,8 +108,13 @@ def check_password():
             st.session_state["password_correct"] = True
             st.session_state["username"] = uname
             st.session_state["current_user"] = USERS[uname]["name"]
-            # Set Token in URL
-            st.query_params["token"] = generate_token(uname)
+            
+            # Set Token in URL (Generates time dynamically)
+            new_token = generate_token(uname)
+            st.query_params["token"] = new_token
+            _, login_time = verify_token(new_token)
+            st.session_state["login_time"] = login_time
+            
             del st.session_state["password_input"]  
         else:
             st.session_state["password_correct"] = False
@@ -132,6 +147,11 @@ if check_password():
     # --- SIDEBAR ---
     st.sidebar.title("Navigations")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
+    
+    # --- ADDED: FIRST LOGIN TIME TRACKER ---
+    if "login_time" in st.session_state:
+        st.sidebar.info(f"🕒 First Login: {st.session_state['login_time']}")
+        
     st.sidebar.markdown("---")
     
     # Explicit Refresh Button
@@ -873,11 +893,11 @@ if check_password():
                         total_row[col] = roas_df[col].sum()
                         
                     # Re-calculate ratios for Grand Total
-                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
-                    total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
+                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Lead To Converted SM %"] = total_row["Converted SM"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
+                    total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
                     
                     roas_df = pd.concat([roas_df, pd.DataFrame([total_row])], ignore_index=True)
                     
