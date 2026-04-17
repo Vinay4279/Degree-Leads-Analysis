@@ -419,7 +419,7 @@ if check_password():
                         "Hyperlap Universities": uni,
                         "Lead Received": lead_received,
                         "Facebook": facebook_count,
-                        "Google": Google_count,
+                        "Google": google_count,
                         "LinkedIn": linkedin_count,
                         "Junk SM": junk_sm,
                         "Junk SM %": junk_pct,
