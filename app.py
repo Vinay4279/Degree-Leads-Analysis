@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import mysql.connector
 import datetime
+import base64
 
-# --- 1. PAGE CONFIGURATION & PROFESSIONAL UI (CSS) ---
+# --- 1. PAGE CONFIGURATION & PROFESSIONAL UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
-# CSS for Professional Look & Glowing Highlight Effect
 st.markdown("""
 <style>
     /* Main Title Styling */
@@ -26,7 +26,7 @@ st.markdown("""
         transition: 0.3s ease-in-out;
     }
     
-    /* Highlight effect for Dataframes and Containers */
+    /* Highlight effect for Dataframes */
     .stDataFrame:hover {
         box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         border-radius: 10px;
@@ -47,72 +47,111 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ADVANCED LOGIN SYSTEM ---
-# Case-insensitive data storage
+# --- 2. ADVANCED LOGIN SYSTEM (Till Midnight Persistence) ---
 USERS = {
     "hx1001": {"pwd": "hx1001", "name": "Vipul Bhatnagar"},
     "hx1192": {"pwd": "hx1192", "name": "Vipin Rawat"},
     "hx1464": {"pwd": "hx1464", "name": "Pramod Kumar"},
     "hx0000": {"pwd": "hx0000", "name": "Devender"},
-    "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"}
+    "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"} # ADMIN
 }
 
+def generate_token(uname):
+    """Generates a token valid only for today"""
+    raw = f"{uname}|{datetime.date.today()}"
+    return base64.b64encode(raw.encode()).decode()
+
+def verify_token(token):
+    """Checks if token is valid and belongs to today"""
+    try:
+        raw = base64.b64decode(token).decode()
+        uname, date_str = raw.split("|")
+        if date_str == str(datetime.date.today()) and uname in USERS:
+            return uname
+    except:
+        pass
+    return None
+
 def check_password():
-    """Returns True if the user enters the correct ID and Password."""
+    # Check if a valid token already exists in URL (for browser refresh)
+    if "token" in st.query_params:
+        valid_user = verify_token(st.query_params["token"])
+        if valid_user:
+            st.session_state["password_correct"] = True
+            st.session_state["username"] = valid_user
+            st.session_state["current_user"] = USERS[valid_user]["name"]
+
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
     def password_entered():
-        # .lower() makes it case-insensitive
-        uname = st.session_state["username"].strip().lower()
-        pwd = st.session_state["password"].strip().lower()
+        uname = st.session_state["username_input"].strip().lower()
+        pwd = st.session_state["password_input"].strip().lower()
         
         if uname in USERS and USERS[uname]["pwd"] == pwd:
             st.session_state["password_correct"] = True
+            st.session_state["username"] = uname
             st.session_state["current_user"] = USERS[uname]["name"]
-            del st.session_state["password"]  
+            # Set Token in URL
+            st.query_params["token"] = generate_token(uname)
+            del st.session_state["password_input"]  
         else:
             st.session_state["password_correct"] = False
 
     if not st.session_state["password_correct"]:
         st.title("🔐 Login to Degree Leads Analysis")
-        st.text_input("Username", key="username")
-        st.text_input("Password", type="password", key="password")
+        st.text_input("Username", key="username_input")
+        st.text_input("Password", type="password", key="password_input")
         st.button("Login", on_click=password_entered)
         
         if "password_correct" in st.session_state and st.session_state["password_correct"] == False:
             st.error("😕 Invalid Username or Password")
         return False
-    
     return True
 
 # --- 3. MAIN DASHBOARD ---
 if check_password():
     
-    # --- SIDEBAR (Left Side Filters & Navigation) ---
+    # Security Rule: Hide Top Cloud Menu for non-admins (anyone except hx0335)
+    if st.session_state["username"] != "hx0335":
+        st.markdown("""
+            <style>
+                /* Hides the Streamlit top right menu (Manage App, GitHub, etc.) */
+                header[data-testid="stHeader"] {
+                    display: none !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+    
+    # --- SIDEBAR ---
     st.sidebar.title("Navigations")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     st.sidebar.markdown("---")
     
-    # Filters Ek ke neeche ek
+    # Explicit Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
+        
+    st.sidebar.markdown("---")
+    
     today = datetime.date.today()
     first_day_of_month = today.replace(day=1)
     
     start_date = st.sidebar.date_input("Start Date", value=first_day_of_month)
     end_date = st.sidebar.date_input("End Date", value=today)
     
-    # Source Filter
     source_filter = st.sidebar.selectbox("Source", ["All", "FACEBOOK", "GOOGLE", "LINKEDIN"])
     
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
+        st.query_params.clear()
         st.session_state.clear()
         st.rerun()
 
-    # Main Title
     st.title("🎓 Degree Leads Analysis")
 
-    # --- REAL DATABASE CONNECTION ---
+    # --- DATABASE CONNECTION ---
     @st.cache_data(ttl=600) 
     def load_data_from_mysql():
         try:
@@ -124,7 +163,6 @@ if check_password():
                 password=st.secrets["mysql"]["password"]
             )
             
-            # Aapki Master SQL Query
             query = """
             WITH T1 AS (
             SELECT DISTINCT
@@ -169,7 +207,6 @@ if check_password():
         FROM contacts c 
         LEFT JOIN contacts_cstm cc on c.id = cc.id_c 
         WHERE (
-            -- Dynamic 2-Month Logic with OR conditions
             DATE(DATE_ADD(DATE_ADD(c.date_entered, INTERVAL 5 HOUR), INTERVAL 30 MINUTE)) >= DATE_FORMAT(CURRENT_DATE - INTERVAL 1 MONTH, '%Y-%m-01')
             OR DATE(DATE_ADD(DATE_ADD(cc.mx_transition_to_counselled_c, INTERVAL 5 HOUR), INTERVAL 30 MINUTE)) >= DATE_FORMAT(CURRENT_DATE - INTERVAL 1 MONTH, '%Y-%m-01')
             OR DATE(DATE_ADD(DATE_ADD(cc.mx_transition_to_offer_c, INTERVAL 5 HOUR), INTERVAL 30 MINUTE)) >= DATE_FORMAT(CURRENT_DATE - INTERVAL 1 MONTH, '%Y-%m-01')
@@ -200,65 +237,68 @@ if check_password():
     AND T1.Lead_Type IN ('FACEBOOK', 'GOOGLE', 'LINKEDIN')
     ORDER BY T1.CreatedOn_Date
             """
-            
             df = pd.read_sql(query, conn)
             conn.close()
             return df
-        
         except Exception as e:
-            st.error(f"Database connect karne mein error aayi: {e}")
+            st.error(f"Database connect error: {e}")
             return pd.DataFrame()
 
-    data = load_data_from_mysql()
+    raw_data = load_data_from_mysql()
 
-    # --- TABS SETUP ---
     tab1, tab2 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report"])
 
-    # --- APPLY SIDEBAR SOURCE FILTER ---
-    if not data.empty:
+    if not raw_data.empty:
+        # Get master list of universities BEFORE filtering, so 0 values can appear
+        all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
+        
+        # Apply Source Filter
         if source_filter != "All":
-            data = data[data['Lead_Type'] == source_filter]
+            filtered_data = raw_data[raw_data['Lead_Type'] == source_filter].copy()
+        else:
+            filtered_data = raw_data.copy()
 
-        # Convert Dates
-        data['CreatedOn_Date'] = pd.to_datetime(data['CreatedOn_Date'], errors='coerce').dt.date
-        data['Connected_Thirty_sec'] = pd.to_datetime(data['Connected_Thirty_sec'], errors='coerce').dt.date
-        data['Counselled_DT'] = pd.to_datetime(data['Counselled_DT'], errors='coerce').dt.date
-        data['Offer_DT'] = pd.to_datetime(data['Offer_DT'], errors='coerce').dt.date
-        data['Converted_DT'] = pd.to_datetime(data['Converted_DT'], errors='coerce').dt.date
+        # Convert Dates safely
+        filtered_data['CreatedOn_Date'] = pd.to_datetime(filtered_data['CreatedOn_Date'], errors='coerce').dt.date
+        filtered_data['Connected_Thirty_sec'] = pd.to_datetime(filtered_data['Connected_Thirty_sec'], errors='coerce').dt.date
+        filtered_data['Counselled_DT'] = pd.to_datetime(filtered_data['Counselled_DT'], errors='coerce').dt.date
+        filtered_data['Offer_DT'] = pd.to_datetime(filtered_data['Offer_DT'], errors='coerce').dt.date
+        filtered_data['Converted_DT'] = pd.to_datetime(filtered_data['Converted_DT'], errors='coerce').dt.date
 
-    # --- TAB 1: Search aur Data Table ---
+        # Safe date comparison lambda function (fixes the crash error)
+        is_in_range = lambda d: isinstance(d, datetime.date) and start_date <= d <= end_date
+
+    # --- TAB 1 ---
     with tab1:
-        if not data.empty:
+        if not raw_data.empty:
             search_query = st.text_input("Search any keyword...")
-            
             if search_query:
-                mask = data.astype(str).apply(lambda x: x.str.contains(search_query, case=False)).any(axis=1)
-                filtered_df = data[mask]
-                st.dataframe(filtered_df, use_container_width=True)
+                mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_query, case=False)).any(axis=1)
+                search_df = filtered_data[mask]
+                st.dataframe(search_df, use_container_width=True)
             else:
-                st.dataframe(data, use_container_width=True)
-                
-            st.caption(f"Total Rows Fetched: {len(data)}")
+                st.dataframe(filtered_data, use_container_width=True)
+            st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
             st.warning("Data load nahi hua. Kripya apni SQL Query check karein.")
 
-    # --- TAB 2: Analytics Report ---
+    # --- TAB 2 ---
     with tab2:
-        if not data.empty:
+        if not raw_data.empty:
             if start_date <= end_date:
-                mask_created = (data['CreatedOn_Date'] >= start_date) & (data['CreatedOn_Date'] <= end_date)
-                df_created = data[mask_created]
+                
+                # Apply Created Date Filter safely
+                created_mask = filtered_data['CreatedOn_Date'].apply(is_in_range)
+                df_created = filtered_data[created_mask]
 
                 report_data = []
-                universities = sorted(data['Hyperlap_University_Name'].dropna().unique())
 
-                for uni in universities:
+                # Use all_universities loop so it prints 0s even if df_created is empty
+                for uni in all_universities:
                     df_uni_sm = df_created[df_created['Hyperlap_University_Name'] == uni]
-                    df_uni_overall = data[data['Hyperlap_University_Name'] == uni]
+                    df_uni_overall = filtered_data[filtered_data['Hyperlap_University_Name'] == uni]
                     
                     lead_received = len(df_uni_sm)
-                    if lead_received == 0:
-                        continue 
                     
                     facebook_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'FACEBOOK'])
                     google_count = len(df_uni_sm[df_uni_sm['Lead_Type'] == 'GOOGLE'])
@@ -271,30 +311,30 @@ if check_password():
                     junk_overall_mask = df_uni_overall['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
                     junk_overall = len(df_uni_overall[junk_overall_mask])
                     
-                    conn_30_sm_mask = (df_uni_sm['Connected_Thirty_sec'] >= start_date) & (df_uni_sm['Connected_Thirty_sec'] <= end_date)
+                    conn_30_sm_mask = df_uni_sm['Connected_Thirty_sec'].apply(is_in_range)
                     conn_30_sm = len(df_uni_sm[conn_30_sm_mask])
                     conn_30_sm_pct = conn_30_sm / lead_received if lead_received > 0 else 0
                     
-                    conn_overall_mask = (df_uni_overall['Connected_Thirty_sec'] >= start_date) & (df_uni_overall['Connected_Thirty_sec'] <= end_date)
+                    conn_overall_mask = df_uni_overall['Connected_Thirty_sec'].apply(is_in_range)
                     conn_30_overall = len(df_uni_overall[conn_overall_mask])
 
-                    couns_sm_mask = (df_uni_sm['Counselled_DT'] >= start_date) & (df_uni_sm['Counselled_DT'] <= end_date)
+                    couns_sm_mask = df_uni_sm['Counselled_DT'].apply(is_in_range)
                     couns_sm = len(df_uni_sm[couns_sm_mask])
                     couns_sm_pct = couns_sm / conn_30_sm if conn_30_sm > 0 else 0
 
-                    couns_overall_mask = (df_uni_overall['Counselled_DT'] >= start_date) & (df_uni_overall['Counselled_DT'] <= end_date)
+                    couns_overall_mask = df_uni_overall['Counselled_DT'].apply(is_in_range)
                     couns_overall = len(df_uni_overall[couns_overall_mask])
 
-                    offer_sm_mask = (df_uni_sm['Offer_DT'] >= start_date) & (df_uni_sm['Offer_DT'] <= end_date)
+                    offer_sm_mask = df_uni_sm['Offer_DT'].apply(is_in_range)
                     offer_sm = len(df_uni_sm[offer_sm_mask])
 
-                    offer_overall_mask = (df_uni_overall['Offer_DT'] >= start_date) & (df_uni_overall['Offer_DT'] <= end_date)
+                    offer_overall_mask = df_uni_overall['Offer_DT'].apply(is_in_range)
                     offer_overall = len(df_uni_overall[offer_overall_mask])
 
-                    conv_sm_mask = (df_uni_sm['Converted_DT'] >= start_date) & (df_uni_sm['Converted_DT'] <= end_date)
+                    conv_sm_mask = df_uni_sm['Converted_DT'].apply(is_in_range)
                     conv_sm = len(df_uni_sm[conv_sm_mask])
 
-                    conv_overall_mask = (df_uni_overall['Converted_DT'] >= start_date) & (df_uni_overall['Converted_DT'] <= end_date)
+                    conv_overall_mask = df_uni_overall['Converted_DT'].apply(is_in_range)
                     conv_overall = len(df_uni_overall[conv_overall_mask])
 
                     offer_to_couns_pct_sm = offer_sm / couns_sm if couns_sm > 0 else 0
@@ -327,41 +367,37 @@ if check_password():
                         "Lead To Converted % SM": conv_to_lead_pct_sm
                     })
 
-                if report_data:
-                    report_df = pd.DataFrame(report_data)
+                report_df = pd.DataFrame(report_data)
+                
+                # --- GRAND TOTAL ROW LOGIC ---
+                total_row = {'Hyperlap Universities': 'Grand Total'}
+                sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
+                                'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
+                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
+                
+                for col in sum_columns:
+                    total_row[col] = report_df[col].sum()
                     
-                    # --- GRAND TOTAL ROW LOGIC ---
-                    total_row = {'Hyperlap Universities': 'Grand Total'}
-                    
-                    sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
-                                   'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
-                                   'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
-                    
-                    for col in sum_columns:
-                        total_row[col] = report_df[col].sum()
-                        
-                    total_row['Junk SM %'] = total_row['Junk SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
-                    total_row['Connected 30 Sec SM %'] = total_row['Connected 30 Sec SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
-                    total_row['Counselled SM %'] = total_row['Counselled SM'] / total_row['Connected 30 Sec SM'] if total_row['Connected 30 Sec SM'] > 0 else 0
-                    total_row['Offer To Counselled % SM'] = total_row['Offer SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
-                    total_row['Offer To Converted % SM'] = total_row['Converted SM'] / total_row['Offer SM'] if total_row['Offer SM'] > 0 else 0
-                    total_row['Counselled To Converted % SM'] = total_row['Converted SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
-                    total_row['Lead To Converted % SM'] = total_row['Converted SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
+                total_row['Junk SM %'] = total_row['Junk SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
+                total_row['Connected 30 Sec SM %'] = total_row['Connected 30 Sec SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
+                total_row['Counselled SM %'] = total_row['Counselled SM'] / total_row['Connected 30 Sec SM'] if total_row['Connected 30 Sec SM'] > 0 else 0
+                total_row['Offer To Counselled % SM'] = total_row['Offer SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
+                total_row['Offer To Converted % SM'] = total_row['Converted SM'] / total_row['Offer SM'] if total_row['Offer SM'] > 0 else 0
+                total_row['Counselled To Converted % SM'] = total_row['Converted SM'] / total_row['Counselled SM'] if total_row['Counselled SM'] > 0 else 0
+                total_row['Lead To Converted % SM'] = total_row['Converted SM'] / total_row['Lead Received'] if total_row['Lead Received'] > 0 else 0
 
-                    report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
-                    
-                    styled_report = report_df.style.format({
-                        "Junk SM %": "{:.2%}",
-                        "Connected 30 Sec SM %": "{:.2%}",
-                        "Counselled SM %": "{:.2%}",
-                        "Offer To Counselled % SM": "{:.2%}",
-                        "Offer To Converted % SM": "{:.2%}",
-                        "Counselled To Converted % SM": "{:.2%}",
-                        "Lead To Converted % SM": "{:.2%}"
-                    })
-                    
-                    st.dataframe(styled_report, use_container_width=True)
-                else:
-                    st.info("In dates ke beech mein koi Lead Received nahi hui hai.")
+                report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
+                
+                styled_report = report_df.style.format({
+                    "Junk SM %": "{:.2%}",
+                    "Connected 30 Sec SM %": "{:.2%}",
+                    "Counselled SM %": "{:.2%}",
+                    "Offer To Counselled % SM": "{:.2%}",
+                    "Offer To Converted % SM": "{:.2%}",
+                    "Counselled To Converted % SM": "{:.2%}",
+                    "Lead To Converted % SM": "{:.2%}"
+                })
+                
+                st.dataframe(styled_report, use_container_width=True)
             else:
                 st.error("❌ End Date kabhi bhi Start Date se pehle ki nahi ho sakti!")
