@@ -4,16 +4,13 @@ import mysql.connector
 import datetime
 import base64
 
-# --- Define image URL for Hero Vired ---
-HERO_VIRED_LOGO_URL = "https://static.punemirror.com/full/7cb39710-7074-49f7-9f3c-9667b666f70e.jpg"
-
 # --- 1. PAGE CONFIGURATION & PROFESSIONAL UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
 st.markdown("""
 <style>
-    /* Main Title Styling */
-    h1 {
+    /* Main Title Styling - Applied only to Text, keeping Emojis Original */
+    .gradient-text {
         background: -webkit-linear-gradient(#4facfe, #00f2fe);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -144,7 +141,7 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if not st.session_state["password_correct"]:
-        st.title("🔐 Login to Degree Leads Analysis")
+        st.markdown("<h1>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
         st.text_input("Username", key="username_input")
         st.text_input("Password", type="password", key="password_input")
         st.button("Login", on_click=password_entered)
@@ -170,7 +167,6 @@ if check_password():
     
     # --- SIDEBAR ---
     st.sidebar.markdown("<div style='margin-top: -10px; margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
-    # REPLACE: st.sidebar.title("Navigations")
     st.sidebar.title("Hero Vired Pvt Ltd.")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     
@@ -208,9 +204,7 @@ if check_password():
         st.session_state.clear()
         st.rerun()
 
-    # --- ADDED: MAIN AREA LOGO ---
-    st.image(HERO_VIRED_LOGO_URL, width=150)
-    st.title("🎓 Degree Leads Analysis")
+    st.markdown("<h1>🎓 <span class='gradient-text'>Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
 
     # --- DATABASE & GOOGLE SHEET CONNECTION ---
     @st.cache_data(ttl=600) 
@@ -921,8 +915,8 @@ if check_password():
                         total_row[col] = roas_df[col].sum()
                         
                     # Re-calculate ratios for Grand Total
-                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
+                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Lead To Converted SM %"] = total_row["Converted SM"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
                     total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
