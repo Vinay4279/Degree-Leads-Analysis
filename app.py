@@ -568,6 +568,7 @@ if check_password():
                     report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
                     
                     styled_report_camp = report_df_camp.style.format({
+                        "Spend": "{:.2f}",
                         "Junk SM %": "{:.2%}",
                         "Connected 30 Sec SM %": "{:.2%}",
                         "Counselled SM %": "{:.2%}",
