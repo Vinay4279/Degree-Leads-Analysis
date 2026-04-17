@@ -455,7 +455,6 @@ if check_password():
 
                     report_data.append({
                         "Hyperlap Universities": uni,
-                        "Booked Amount": booked_amount,
                         "Lead Received": lead_received,
                         "Facebook": facebook_count,
                         "Google": google_count,
@@ -473,6 +472,7 @@ if check_password():
                         "Offer Overall": offer_overall,
                         "Converted SM": conv_sm,
                         "Converted Overall": conv_overall,
+                        "Booked Amount": booked_amount,  # <--- MOVED HERE
                         "Offer To Counselled % SM": offer_to_couns_pct_sm,
                         "Offer To Converted % SM": conv_to_offer_pct_sm,
                         "Counselled To Converted % SM": conv_to_couns_pct_sm,
@@ -483,9 +483,9 @@ if check_password():
                 
                 # --- GRAND TOTAL ROW LOGIC ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
-                sum_columns = ['Booked Amount', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
+                sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall',
                                 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall',
-                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall']
+                                'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 
                 for col in sum_columns:
                     total_row[col] = report_df[col].sum()
