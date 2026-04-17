@@ -50,6 +50,11 @@ st.markdown("""
         padding-top: 2rem !important;
         padding-bottom: 2rem !important;
     }
+    
+    /* Shift Sidebar Content Up */
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 1rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -145,6 +150,7 @@ if check_password():
         """, unsafe_allow_html=True)
     
     # --- SIDEBAR ---
+    st.sidebar.markdown("<div style='margin-bottom: 5px;'><small><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
     st.sidebar.title("Navigations")
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     
