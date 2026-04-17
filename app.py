@@ -249,7 +249,7 @@ if check_password():
     tab1, tab2 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics Report"])
 
     if not raw_data.empty:
-        # Get master list of universities BEFORE filtering, so 0 values can appear
+        # Master list of universities
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
         
         # Apply Source Filter
@@ -258,15 +258,14 @@ if check_password():
         else:
             filtered_data = raw_data.copy()
 
-        # Convert Dates safely
-        filtered_data['CreatedOn_Date'] = pd.to_datetime(filtered_data['CreatedOn_Date'], errors='coerce').dt.date
-        filtered_data['Connected_Thirty_sec'] = pd.to_datetime(filtered_data['Connected_Thirty_sec'], errors='coerce').dt.date
-        filtered_data['Counselled_DT'] = pd.to_datetime(filtered_data['Counselled_DT'], errors='coerce').dt.date
-        filtered_data['Offer_DT'] = pd.to_datetime(filtered_data['Offer_DT'], errors='coerce').dt.date
-        filtered_data['Converted_DT'] = pd.to_datetime(filtered_data['Converted_DT'], errors='coerce').dt.date
+        # SAFE PANDAS NATIVE DATETIME CONVERSION
+        date_cols = ['CreatedOn_Date', 'Connected_Thirty_sec', 'Counselled_DT', 'Offer_DT', 'Converted_DT']
+        for col in date_cols:
+            filtered_data[col] = pd.to_datetime(filtered_data[col], errors='coerce')
 
-        # Safe date comparison lambda function (fixes the crash error)
-        is_in_range = lambda d: isinstance(d, datetime.date) and start_date <= d <= end_date
+        # Convert Streamlit inputs to Pandas Timestamps for safe comparison
+        start_ts = pd.to_datetime(start_date)
+        end_ts = pd.to_datetime(end_date)
 
     # --- TAB 1 ---
     with tab1:
@@ -275,9 +274,18 @@ if check_password():
             if search_query:
                 mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_query, case=False)).any(axis=1)
                 search_df = filtered_data[mask]
-                st.dataframe(search_df, use_container_width=True)
+                
+                # Format dates back to string for clean display
+                display_df = search_df.copy()
+                for col in date_cols:
+                    display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
+                st.dataframe(display_df, use_container_width=True)
             else:
-                st.dataframe(filtered_data, use_container_width=True)
+                display_df = filtered_data.copy()
+                for col in date_cols:
+                    display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
+                st.dataframe(display_df, use_container_width=True)
+                
             st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
             st.warning("Data load nahi hua. Kripya apni SQL Query check karein.")
@@ -287,13 +295,12 @@ if check_password():
         if not raw_data.empty:
             if start_date <= end_date:
                 
-                # Apply Created Date Filter safely
-                created_mask = filtered_data['CreatedOn_Date'].apply(is_in_range)
+                # Safely mask data using Pandas native datetime checks
+                created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
                 report_data = []
 
-                # Use all_universities loop so it prints 0s even if df_created is empty
                 for uni in all_universities:
                     df_uni_sm = df_created[df_created['Hyperlap_University_Name'] == uni]
                     df_uni_overall = filtered_data[filtered_data['Hyperlap_University_Name'] == uni]
@@ -311,30 +318,30 @@ if check_password():
                     junk_overall_mask = df_uni_overall['ProspectStage'].astype(str).str.lower().str.contains('l1_lost|l2_lost|l1 lost|l2 lost', regex=True, na=False)
                     junk_overall = len(df_uni_overall[junk_overall_mask])
                     
-                    conn_30_sm_mask = df_uni_sm['Connected_Thirty_sec'].apply(is_in_range)
+                    conn_30_sm_mask = (df_uni_sm['Connected_Thirty_sec'] >= start_ts) & (df_uni_sm['Connected_Thirty_sec'] <= end_ts)
                     conn_30_sm = len(df_uni_sm[conn_30_sm_mask])
                     conn_30_sm_pct = conn_30_sm / lead_received if lead_received > 0 else 0
                     
-                    conn_overall_mask = df_uni_overall['Connected_Thirty_sec'].apply(is_in_range)
+                    conn_overall_mask = (df_uni_overall['Connected_Thirty_sec'] >= start_ts) & (df_uni_overall['Connected_Thirty_sec'] <= end_ts)
                     conn_30_overall = len(df_uni_overall[conn_overall_mask])
 
-                    couns_sm_mask = df_uni_sm['Counselled_DT'].apply(is_in_range)
+                    couns_sm_mask = (df_uni_sm['Counselled_DT'] >= start_ts) & (df_uni_sm['Counselled_DT'] <= end_ts)
                     couns_sm = len(df_uni_sm[couns_sm_mask])
                     couns_sm_pct = couns_sm / conn_30_sm if conn_30_sm > 0 else 0
 
-                    couns_overall_mask = df_uni_overall['Counselled_DT'].apply(is_in_range)
+                    couns_overall_mask = (df_uni_overall['Counselled_DT'] >= start_ts) & (df_uni_overall['Counselled_DT'] <= end_ts)
                     couns_overall = len(df_uni_overall[couns_overall_mask])
 
-                    offer_sm_mask = df_uni_sm['Offer_DT'].apply(is_in_range)
+                    offer_sm_mask = (df_uni_sm['Offer_DT'] >= start_ts) & (df_uni_sm['Offer_DT'] <= end_ts)
                     offer_sm = len(df_uni_sm[offer_sm_mask])
 
-                    offer_overall_mask = df_uni_overall['Offer_DT'].apply(is_in_range)
+                    offer_overall_mask = (df_uni_overall['Offer_DT'] >= start_ts) & (df_uni_overall['Offer_DT'] <= end_ts)
                     offer_overall = len(df_uni_overall[offer_overall_mask])
 
-                    conv_sm_mask = df_uni_sm['Converted_DT'].apply(is_in_range)
+                    conv_sm_mask = (df_uni_sm['Converted_DT'] >= start_ts) & (df_uni_sm['Converted_DT'] <= end_ts)
                     conv_sm = len(df_uni_sm[conv_sm_mask])
 
-                    conv_overall_mask = df_uni_overall['Converted_DT'].apply(is_in_range)
+                    conv_overall_mask = (df_uni_overall['Converted_DT'] >= start_ts) & (df_uni_overall['Converted_DT'] <= end_ts)
                     conv_overall = len(df_uni_overall[conv_overall_mask])
 
                     offer_to_couns_pct_sm = offer_sm / couns_sm if couns_sm > 0 else 0
