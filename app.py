@@ -107,7 +107,32 @@ st.markdown("""
         max-width: 96% !important; /* Maximizes screen usage */
     }
     
-    /* Optimize Sidebar Space */
+    /* === ADDED: SIDEBAR CENTER ALIGNMENT CSS === */
+    [data-testid="stSidebar"] {
+        text-align: center;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
+        text-align: center !important;
+    }
+    [data-testid="stSidebar"] label p {
+        text-align: center !important;
+        width: 100% !important;
+        display: block !important;
+    }
+    [data-testid="stSidebar"] input {
+        text-align: center !important;
+    }
+    [data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] {
+        justify-content: center !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        display: flex;
+        justify-content: center;
+        text-align: center;
+    }
     [data-testid="stSidebarHeader"] {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
@@ -115,13 +140,6 @@ st.markdown("""
     }
     [data-testid="stSidebarUserContent"] {
         padding-top: 0rem !important;
-    }
-    [data-testid="stSidebarUserContent"] h1, 
-    [data-testid="stSidebarUserContent"] h2, 
-    [data-testid="stSidebarUserContent"] h3 {
-        padding-top: 0rem !important;
-        margin-top: 0rem !important;
-        padding-bottom: 0.5rem !important;
     }
     hr {
         border-color: rgba(255, 255, 255, 0.1) !important;
@@ -226,13 +244,13 @@ if check_password():
             </style>
         """, unsafe_allow_html=True)
     
-    # --- SIDEBAR ---
-    st.sidebar.markdown("<div style='margin-top: -10px; margin-bottom: 5px;'><small style='color: #94a3b8;'><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
-    st.sidebar.title("Hero Vired Pvt Ltd.")
+    # --- SIDEBAR (Now fully Center Aligned via CSS) ---
+    st.sidebar.markdown("<div style='text-align: center; margin-top: -10px; margin-bottom: 5px;'><small style='color: #94a3b8;'><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h2 style='text-align: center; margin-top: 0px;'>Hero Vired Pvt Ltd.</h2>", unsafe_allow_html=True)
     st.sidebar.success(f"Welcome {st.session_state['current_user']}")
     
     if "login_time" in st.session_state:
-        st.sidebar.info(f"🕒 First Login: {st.session_state['login_time']}")
+        st.sidebar.info(f"🕒 First Login:<br>{st.session_state['login_time']}")
         
     st.sidebar.markdown("---")
     
@@ -522,10 +540,23 @@ if check_password():
                     })
 
                 report_df = pd.DataFrame(report_data)
+                
+                # --- GRAND TOTAL ROW AT THE TOP ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
                 sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 for col in sum_columns: total_row[col] = report_df[col].sum()
+                
+                # Concat Total row FIRST so it stays at index 0 (Top)
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
+                
+                # Recalculate percentage formulas for Total Row (now at index 0)
+                report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
+                report_df.at[0, 'Connected 30 Sec SM %'] = report_df.at[0, 'Connected 30 Sec SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
+                report_df.at[0, 'Counselled SM %'] = report_df.at[0, 'Counselled SM'] / report_df.at[0, 'Connected 30 Sec SM'] if report_df.at[0, 'Connected 30 Sec SM'] > 0 else 0
+                report_df.at[0, 'Offer To Counselled % SM'] = report_df.at[0, 'Offer SM'] / report_df.at[0, 'Counselled SM'] if report_df.at[0, 'Counselled SM'] > 0 else 0
+                report_df.at[0, 'Offer To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Offer SM'] if report_df.at[0, 'Offer SM'] > 0 else 0
+                report_df.at[0, 'Counselled To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Counselled SM'] if report_df.at[0, 'Counselled SM'] > 0 else 0
+                report_df.at[0, 'Lead To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 
                 styled_report = report_df.style.format({
                     "Booked Amount": "{:.2f}", "Junk SM %": "{:.2%}", "Connected 30 Sec SM %": "{:.2%}",
@@ -579,6 +610,15 @@ if check_password():
                     })
                 if report_data_camp:
                     report_df_camp = pd.DataFrame(report_data_camp)
+                    
+                    # --- GRAND TOTAL ROW AT THE TOP ---
+                    total_row_camp = {'Source Campaign': 'Grand Total'}
+                    sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Connected 30 Sec SM', 'Counselled SM', 'Offer SM', 'Converted SM']
+                    for col in sum_columns_camp: total_row_camp[col] = report_df_camp[col].sum()
+                    
+                    # Concat at top
+                    report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
+                    
                     st.dataframe(report_df_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
                 else: st.info("No Campaign Data found.")
 
@@ -594,6 +634,15 @@ if check_password():
                 df_uni_today = df_today[df_today['Hyperlap_University_Name'].astype(str).str.contains(search_key, case=False, na=False)]
                 daily_report_data.append({"HYPERLAP_UNIVERSITY_NAME": display_name, "GOOGLE-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE-DEVENDER']), "META-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'META-DEVENDER']), "GOOGLE INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE INHOUSE']), "META INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'META INHOUSE']), "LINKEDIN INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'LINKEDIN INHOUSE']), "TOTAL LEADS": len(df_uni_today)})
             df_daily = pd.DataFrame(daily_report_data)
+            
+            # --- GRAND TOTAL ROW AT THE TOP ---
+            total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
+            sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
+            for col in sum_cols_daily: total_row_daily[col] = df_daily[col].sum()
+            
+            # Changed sequence so it appends at the Top (Index 0)
+            df_daily = pd.concat([pd.DataFrame([total_row_daily]), df_daily], ignore_index=True)
+            
             st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
 
     # --- TAB 5: ROAS DASHBOARD ---
@@ -670,14 +719,20 @@ if check_password():
                 
                 if roas_data:
                     roas_df = pd.DataFrame(roas_data)
+                    
+                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row = {"Source Tag": "GRAND TOTAL"}
                     for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
-                    total_row["CPL"] = total_row["Spends"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
-                    total_row["Booked ROAS"] = total_row["Booked Amount"] / total_row["Spends"] if total_row["Spends"] > 0 else 0
-                    total_row["CAC"] = total_row["Spends"] / total_row["Converted Overall"] if total_row["Converted Overall"] > 0 else 0
-                    total_row["Lead To Converted SM %"] = total_row["Converted SM"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
-                    total_row["Lead To Converted Overall %"] = total_row["Converted Overall"] / total_row["Lead Received"] if total_row["Lead Received"] > 0 else 0
-                    roas_df = pd.concat([roas_df, pd.DataFrame([total_row])], ignore_index=True)
+                    
+                    # Insert Total Row at index 0 (Top)
+                    roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
+                    
+                    # Recalculate percentage formulas for Total Row (now at index 0)
+                    roas_df.at[0, "CPL"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
+                    roas_df.at[0, "Booked ROAS"] = roas_df.at[0, "Booked Amount"] / roas_df.at[0, "Spends"] if roas_df.at[0, "Spends"] > 0 else 0
+                    roas_df.at[0, "CAC"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Converted Overall"] if roas_df.at[0, "Converted Overall"] > 0 else 0
+                    roas_df.at[0, "Lead To Converted SM %"] = roas_df.at[0, "Converted SM"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
+                    roas_df.at[0, "Lead To Converted Overall %"] = roas_df.at[0, "Converted Overall"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     
                     col_order = ["Source Tag", "Spends", "Lead Received", "CPL", "Converted SM", "Converted Overall", "Booked Amount", "Booked ROAS", "CAC", "Lead To Converted SM %", "Lead To Converted Overall %"]
                     styled_roas = roas_df[col_order].style.format({"Spends": "{:.2f}", "CPL": "{:.2f}", "Booked Amount": "{:.2f}", "Booked ROAS": "{:.2f}", "CAC": "{:.2f}", "Lead To Converted SM %": "{:.2%}", "Lead To Converted Overall %": "{:.2%}"})
