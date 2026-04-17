@@ -493,7 +493,7 @@ if check_password():
                     gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
                     gs_filtered = gs_data_safe[gs_mask].copy()
                     
-                    # --- Map Dashboard Source to Google Sheet Source ---
+                    # --- NEW LOGIC: Map Dashboard Source to Google Sheet Source ---
                     if source_filter != "All":
                         if source_filter == "GOOGLE":
                             gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
@@ -700,8 +700,11 @@ if check_password():
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
                 
-                # Fetch dynamically valid universities from filtered dataset to ensure correct matching
+                # Fetch dynamically valid universities from filtered dataset
                 valid_unis = filtered_data['Hyperlap_University_Name'].dropna().unique()
+                
+                # Clean valid universities list (remove underscores, spaces, make uppercase for perfect matching)
+                valid_unis_clean = [str(u).replace('_', ' ').strip().upper() for u in valid_unis]
 
                 # 2. Setup Google Sheet 1 (Inhouse Spends) safely with Column Checks
                 gs_inhouse_filtered = pd.DataFrame()
@@ -723,23 +726,27 @@ if check_password():
                         dev_data_safe['Facebook Spend'] = pd.to_numeric(dev_data_safe['Facebook Spend'], errors='coerce').fillna(0)
                     gs_dev_filtered = dev_data_safe[(dev_data_safe['Date'] >= start_date) & (dev_data_safe['Date'] <= end_date)]
 
-                # 4. Setup Google Sheet 3 (Enrolled Data) safely with Column Checks
+                # 4. Setup Google Sheet 3 (Enrolled Data) safely with Column Checks and Robust University Matching
                 enrolled_filtered = pd.DataFrame()
-                if not enrolled_data.empty and 'Converted Date' in enrolled_data.columns:
+                if not enrolled_data.empty:
                     enr_data_safe = enrolled_data.copy()
-                    enr_data_safe['Converted Date'] = pd.to_datetime(enr_data_safe['Converted Date'], errors='coerce').dt.date
-                    if 'Total Accrued Amount' in enr_data_safe.columns:
-                        enr_data_safe['Total Accrued Amount'] = pd.to_numeric(enr_data_safe['Total Accrued Amount'], errors='coerce').fillna(0)
                     
-                    # Match Start/End Date AND Ensure University matches the Dashboard's current view
-                    if 'Enrolled University' in enr_data_safe.columns:
-                        enrolled_filtered = enr_data_safe[
-                            (enr_data_safe['Converted Date'] >= start_date) & 
-                            (enr_data_safe['Converted Date'] <= end_date) & 
-                            (enr_data_safe['Enrolled University'].isin(valid_unis))
-                        ]
-                    else:
-                        enrolled_filtered = enr_data_safe[(enr_data_safe['Converted Date'] >= start_date) & (enr_data_safe['Converted Date'] <= end_date)]
+                    # Ensure flexible extraction for "Converted Date"
+                    date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
+                    if date_col:
+                        enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
+                        
+                        uni_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'ENROLLED UNIVERSITY'), None)
+                        
+                        if uni_col:
+                            enr_unis_clean = enr_data_safe[uni_col].astype(str).str.replace('_', ' ').str.strip().str.upper()
+                            enrolled_filtered = enr_data_safe[
+                                (enr_data_safe[date_col] >= start_date) & 
+                                (enr_data_safe[date_col] <= end_date) & 
+                                (enr_unis_clean.isin(valid_unis_clean))
+                            ]
+                        else:
+                            enrolled_filtered = enr_data_safe[(enr_data_safe[date_col] >= start_date) & (enr_data_safe[date_col] <= end_date)]
 
                 # Get unique Source TAGs to iterate through
                 unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
@@ -772,10 +779,28 @@ if check_password():
                     conv_overall_mask = (df_tag_overall['Converted_DT'] >= start_ts) & (df_tag_overall['Converted_DT'] <= end_ts)
                     conv_overall = len(df_tag_overall[conv_overall_mask])
 
-                    # Calculate Booked Amount from Enrolled Data Sheet safely
+                    # Calculate Booked Amount from Enrolled Data Sheet safely (Fixing Spelling Mismatches)
                     booked_amount = 0
-                    if not enrolled_filtered.empty and 'Converted Source TAG' in enrolled_filtered.columns and 'Total Accrued Amount' in enrolled_filtered.columns:
-                        booked_amount = enrolled_filtered[enrolled_filtered['Converted Source TAG'].astype(str).str.strip().str.upper() == tag.upper()]['Total Accrued Amount'].sum()
+                    if not enrolled_filtered.empty:
+                        # Find exactly matched column names ignoring spaces or case sensitivity
+                        conv_col = next((c for c in enrolled_filtered.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
+                        acc_col = next((c for c in enrolled_filtered.columns if str(c).strip().upper() == 'TOTAL ACCRUED AMOUNT'), None)
+                        
+                        if conv_col and acc_col:
+                            enrolled_tags = enrolled_filtered[conv_col].astype(str).str.strip().str.upper()
+                            
+                            # Extreme robust matching ignoring spaces, hyphens and A/E typos
+                            clean_enrolled = enrolled_tags.str.replace(' ', '', regex=False).str.replace('-', '', regex=False)
+                            clean_tag = tag.upper().replace(' ', '').replace('-', '')
+                            
+                            if clean_tag in ['METADEVENDER', 'METADEVENDAR']:
+                                mask = clean_enrolled.isin(['METADEVENDER', 'METADEVENDAR'])
+                            elif clean_tag in ['GOOGLEDEVENDER', 'GOOGLEDEVENDAR']:
+                                mask = clean_enrolled.isin(['GOOGLEDEVENDER', 'GOOGLEDEVENDAR'])
+                            else:
+                                mask = clean_enrolled == clean_tag
+                                
+                            booked_amount = pd.to_numeric(enrolled_filtered[mask][acc_col], errors='coerce').fillna(0).sum()
 
                     # Derived ROAS Formulas
                     booked_roas = booked_amount / spend if spend > 0 else 0
