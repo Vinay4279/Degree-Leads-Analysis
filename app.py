@@ -107,7 +107,7 @@ st.markdown("""
         max-width: 96% !important; /* Maximizes screen usage */
     }
     
-    /* === ADDED: SIDEBAR CENTER ALIGNMENT & EXTRA SPACE REMOVAL CSS === */
+    /* === SIDEBAR CENTER ALIGNMENT & EXTRA SPACE REMOVAL CSS === */
     [data-testid="stSidebar"] {
         text-align: center;
     }
@@ -159,8 +159,11 @@ USERS = {
 }
 
 def generate_token(uname):
-    """Generates a token valid only for today, including initial login timestamp"""
-    login_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    """Generates a token valid only for today, including initial login timestamp in IST"""
+    # Create Indian Standard Time (IST) timezone offset (+5:30)
+    ist_timezone = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    # Fetch current time in IST and format as requested (e.g., 18 Apr 2026 23:21)
+    login_time = datetime.datetime.now(ist_timezone).strftime("%d %b %Y %H:%M")
     raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
@@ -210,7 +213,7 @@ def check_password():
             st.session_state["password_correct"] = False 
 
     if not st.session_state.get("password_correct"):
-        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
+        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI ---
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
         
         col1, col2, col3 = st.columns([1, 1.5, 1]) 
@@ -224,9 +227,6 @@ def check_password():
                 st.text_input("Username", key="username_input")
                 st.text_input("Password", type="password", key="password_input")
                 st.markdown("<br>", unsafe_allow_html=True)
-                
-                # --- MODIFIED: REMOVED "Press Enter to Apply" by Using FormSubmitButton ---
-                # Form Submit Button automatically maps "Enter" key press perfectly without showing the hint text.
                 submitted = st.form_submit_button("Secure Login", use_container_width=True, on_click=password_entered)
             
             if st.session_state["password_correct"] == False:
@@ -246,17 +246,13 @@ if check_password():
             </style>
         """, unsafe_allow_html=True)
     
-    # --- SIDEBAR (Now fully Center Aligned & Extra Space removed via CSS) ---
+    # --- SIDEBAR ---
     st.sidebar.markdown("<div style='text-align: center; margin-top: -10px; margin-bottom: 5px;'><small style='color: #94a3b8;'><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
     st.sidebar.markdown("<h2 style='text-align: center; margin-top: 0px;'>Hero Vired Pvt Ltd.</h2>", unsafe_allow_html=True)
     
-    # --- MODIFIED: REMOVED DEFAULT ALERTS (SUCCESS/INFO) TO REMOVE EXTRA SPACE & HTML TAGS ---
-    # Custom Markdown for centered text with corporate look and controlled margins for zero extra space.
     st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 200, 0, 0.3); background-color: rgba(0, 150, 0, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>Welcome {st.session_state['current_user']}</p></div>", unsafe_allow_html=True)
     
     if "login_time" in st.session_state:
-        # Custom centered markdown for time tracker to remove tags and space. 
-        # `<br>` tag removed. Keeping the layout single line and removing space.
         st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.3); background-color: rgba(0, 242, 254, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>🕒 First Login: {st.session_state['login_time']}</p></div>", unsafe_allow_html=True)
         
     st.sidebar.markdown("---")
@@ -289,7 +285,7 @@ if check_password():
 
     st.markdown("<h1>🎓 <span class='gradient-text'>Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
 
-    # ... DATABASE & GOOGLE SHEET CONNECTION FUNCTIONS REMAIN UNCHANGED ...
+    # --- DATABASE & GOOGLE SHEET CONNECTION ---
     @st.cache_data(ttl=600) 
     def load_data_from_mysql(uname):
         try:
@@ -484,7 +480,6 @@ if check_password():
                     tag_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
                     if date_col and uni_col and acc_col and tag_col:
                         enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
-                        # Removed commas before casting to numeric to prevent string conversion crash
                         enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                         
                         valid_tags = filtered_data['Source_TAG'].dropna().unique()
@@ -547,16 +542,11 @@ if check_password():
                     })
 
                 report_df = pd.DataFrame(report_data)
-                
-                # --- GRAND TOTAL ROW AT THE TOP ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
                 sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 for col in sum_columns: total_row[col] = report_df[col].sum()
-                
-                # Concat Total row FIRST so it stays at index 0 (Top)
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
-                # Recalculate percentage formulas for Total Row (now at index 0)
                 report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 report_df.at[0, 'Connected 30 Sec SM %'] = report_df.at[0, 'Connected 30 Sec SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 report_df.at[0, 'Counselled SM %'] = report_df.at[0, 'Counselled SM'] / report_df.at[0, 'Connected 30 Sec SM'] if report_df.at[0, 'Connected 30 Sec SM'] > 0 else 0
@@ -583,10 +573,7 @@ if check_password():
                 if not gs_data.empty and all(col in gs_data.columns for col in ['Day', 'Cost', 'Campaign', 'Source']):
                     gs_data_safe = gs_data.copy()
                     gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
-                    
-                    # Removed commas before casting to numeric
                     gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
-                    
                     gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
                     gs_filtered = gs_data_safe[gs_mask].copy()
                     if source_filter != "All":
@@ -617,15 +604,10 @@ if check_password():
                     })
                 if report_data_camp:
                     report_df_camp = pd.DataFrame(report_data_camp)
-                    
-                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row_camp = {'Source Campaign': 'Grand Total'}
                     sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Connected 30 Sec SM', 'Counselled SM', 'Offer SM', 'Converted SM']
                     for col in sum_columns_camp: total_row_camp[col] = report_df_camp[col].sum()
-                    
-                    # Concat at top
                     report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
-                    
                     st.dataframe(report_df_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
                 else: st.info("No Campaign Data found.")
 
@@ -641,15 +623,10 @@ if check_password():
                 df_uni_today = df_today[df_today['Hyperlap_University_Name'].astype(str).str.contains(search_key, case=False, na=False)]
                 daily_report_data.append({"HYPERLAP_UNIVERSITY_NAME": display_name, "GOOGLE-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE-DEVENDER']), "META-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'META-DEVENDER']), "GOOGLE INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE INHOUSE']), "META INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'META INHOUSE']), "LINKEDIN INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'LINKEDIN INHOUSE']), "TOTAL LEADS": len(df_uni_today)})
             df_daily = pd.DataFrame(daily_report_data)
-            
-            # --- GRAND TOTAL ROW AT THE TOP ---
             total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
             sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
             for col in sum_cols_daily: total_row_daily[col] = df_daily[col].sum()
-            
-            # Changed sequence so it appends at the Top (Index 0)
             df_daily = pd.concat([pd.DataFrame([total_row_daily]), df_daily], ignore_index=True)
-            
             st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
 
     # --- TAB 5: ROAS DASHBOARD ---
@@ -660,7 +637,6 @@ if check_password():
                 valid_unis_clean = [str(u).replace('_', ' ').strip().upper() for u in filtered_data['Hyperlap_University_Name'].dropna().unique()]
                 unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
                 
-                # --- CLEANING SPENDS DATA EXPLICITLY TO PREVENT STRING CRASHES ---
                 gs_inhouse_filtered = pd.DataFrame()
                 if not gs_data.empty and 'Day' in gs_data.columns and 'Cost' in gs_data.columns:
                     temp_gs = gs_data.copy()
@@ -683,7 +659,6 @@ if check_password():
                     spend = 0.0
                     booked_amount = 0.0
                     
-                    # Spend logic with float enforcement
                     if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
                         spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum())
                     elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
@@ -700,7 +675,6 @@ if check_password():
                     conv_sm = len(df_tag_sm[(df_tag_sm['Converted_DT'] >= start_ts) & (df_tag_sm['Converted_DT'] <= end_ts)])
                     conv_ovr = len(filtered_data[(filtered_data['Source_TAG'] == tag) & (filtered_data['Converted_DT'] >= start_ts) & (filtered_data['Converted_DT'] <= end_ts)])
                     
-                    # Booked amount logic with comma stripping
                     if not enrolled_data.empty:
                         enr_data_safe = enrolled_data.copy()
                         date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
@@ -726,15 +700,11 @@ if check_password():
                 
                 if roas_data:
                     roas_df = pd.DataFrame(roas_data)
-                    
-                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row = {"Source Tag": "GRAND TOTAL"}
                     for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
                     
-                    # Insert Total Row at index 0 (Top)
                     roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
                     
-                    # Recalculate percentage formulas for Total Row (now at index 0)
                     roas_df.at[0, "CPL"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     roas_df.at[0, "Booked ROAS"] = roas_df.at[0, "Booked Amount"] / roas_df.at[0, "Spends"] if roas_df.at[0, "Spends"] > 0 else 0
                     roas_df.at[0, "CAC"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Converted Overall"] if roas_df.at[0, "Converted Overall"] > 0 else 0
