@@ -3,6 +3,8 @@ import pandas as pd
 import mysql.connector
 import datetime
 import base64
+import json
+import os
 
 # --- 1. PAGE CONFIGURATION & CEO-LEVEL ENTERPRISE UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
@@ -158,13 +160,46 @@ USERS = {
     "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"} # ADMIN
 }
 
+# --- ADDED: FILE-BASED MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+TRACKER_FILE = "daily_login_tracker.json"
+
+def get_daily_login_tracker():
+    """Reads the login tracker from a JSON file to survive logouts."""
+    today_str = datetime.datetime.now(IST).strftime("%Y-%m-%d")
+    
+    if os.path.exists(TRACKER_FILE):
+        try:
+            with open(TRACKER_FILE, "r") as f:
+                tracker = json.load(f)
+        except:
+            tracker = {}
+    else:
+        tracker = {}
+        
+    # Clear old days data to save space, and initialize today
+    if today_str not in tracker:
+        tracker = {today_str: {}}
+        
+    return tracker, today_str
+
+def save_daily_login_tracker(tracker):
+    """Saves the tracker to a JSON file."""
+    with open(TRACKER_FILE, "w") as f:
+        json.dump(tracker, f)
+
 def generate_token(uname):
-    """Generates a token valid only for today, including initial login timestamp in IST"""
-    # Create Indian Standard Time (IST) timezone offset (+5:30)
-    ist_timezone = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-    # Fetch current time in IST and format as requested (e.g., 18 Apr 2026 23:21)
-    login_time = datetime.datetime.now(ist_timezone).strftime("%d %b %Y %H:%M")
-    raw = f"{uname}|{datetime.date.today()}|{login_time}"
+    """Generates a token valid only for today, including PERMANENT initial login timestamp in IST"""
+    tracker, today_str = get_daily_login_tracker()
+    
+    # If user is logging in for the first time today, save the exact time permanently
+    if uname not in tracker[today_str]:
+        tracker[today_str][uname] = datetime.datetime.now(IST).strftime("%d %b %Y %H:%M")
+        save_daily_login_tracker(tracker)
+        
+    # Fetch the locked first login time from file memory
+    login_time = tracker[today_str][uname]
+    raw = f"{uname}|{today_str}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
 def verify_token(token):
@@ -172,13 +207,15 @@ def verify_token(token):
     try:
         raw = base64.b64decode(token).decode()
         parts = raw.split("|")
+        today_str = datetime.datetime.now(IST).strftime("%Y-%m-%d")
+        
         if len(parts) == 3:
             uname, date_str, login_time = parts
-            if date_str == str(datetime.date.today()) and uname in USERS:
+            if date_str == today_str and uname in USERS:
                 return uname, login_time
         elif len(parts) == 2:
             uname, date_str = parts
-            if date_str == str(datetime.date.today()) and uname in USERS:
+            if date_str == today_str and uname in USERS:
                 return uname, "Session Started Today"
     except:
         pass
@@ -213,7 +250,7 @@ def check_password():
             st.session_state["password_correct"] = False 
 
     if not st.session_state.get("password_correct"):
-        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI ---
+        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
         
         col1, col2, col3 = st.columns([1, 1.5, 1]) 
@@ -545,6 +582,8 @@ if check_password():
                 total_row = {'Hyperlap Universities': 'Grand Total'}
                 sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 for col in sum_columns: total_row[col] = report_df[col].sum()
+                
+                # Concat Total row FIRST so it stays at index 0 (Top)
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
                 report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
@@ -702,7 +741,6 @@ if check_password():
                     roas_df = pd.DataFrame(roas_data)
                     total_row = {"Source Tag": "GRAND TOTAL"}
                     for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
-                    
                     roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
                     
                     roas_df.at[0, "CPL"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
