@@ -252,21 +252,24 @@ def check_password():
 if check_password():
     
     # --- SECURITY: STRICTLY HIDE "MANAGE APP", GITHUB & PENCIL FOR NON-ADMINS ---
-    # Note: Hum header ko hide nahi kar rahe hain taaki mobile/sidebar menu chalta rahe
+    # Is baar hum sirf specific tools hide kar rahe hain taaki Sidebar Unhide (Hamburger) safe rahe.
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                /* Sirf top right ke tools hide honge (Manage App, Settings, Github, Pencil) */
-                [data-testid="stToolbar"] {
+                /* Right side ke elements (Manage, Github, Menu) hide karna but Sidebar Hamburger rakhna */
+                [data-testid="stActionElements"] {
                     display: none !important;
                 }
                 
-                /* Master Fix: Streamlit Cloud ka Bottom-Right Manage App Badge hide karne ke liye */
-                [class*="viewerBadge"], 
-                [class*="ViewerBadge"], 
+                /* 'Deploy' / 'Manage App' top button specific block */
+                .stDeployButton {
+                    display: none !important;
+                }
+                
+                /* Streamlit Cloud ka floating "Manage App" bottom-right badge strictly hide karna */
                 .viewerBadge_container, 
-                .viewerBadge_link, 
-                a[href*="manage.streamlit.io"] {
+                [class*="viewerBadge"], 
+                #manage-app-badge {
                     display: none !important;
                 }
             </style>
