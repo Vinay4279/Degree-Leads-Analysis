@@ -98,6 +98,15 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
+    /* Info Boxes (First Login Tracker) */
+    .stAlert {
+        border-radius: 8px !important;
+        border: 1px solid rgba(0, 242, 254, 0.2) !important;
+        background-color: rgba(0, 242, 254, 0.05) !important;
+        color: #e2e8f0 !important;
+        backdrop-filter: blur(10px);
+    }
+
     /* Layout ko bada karne ke liye max-width ko 96% karna */
     .block-container {
         padding-top: 2rem !important;
@@ -242,17 +251,22 @@ def check_password():
 # Agar user successfully login kar leta hai, toh dashboard dikhana
 if check_password():
     
-    # --- SECURITY: STRICTLY HIDE "MANAGE APP" & TOP RIBBON FOR NON-ADMINS ---
-    # Sirf hx0335 ko access milega, baaki sabse hide kar diya gaya hai
+    # --- SECURITY: STRICTLY HIDE "MANAGE APP", GITHUB & PENCIL FOR NON-ADMINS ---
+    # Note: Hum header ko hide nahi kar rahe hain taaki mobile/sidebar menu chalta rahe
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                /* Hide Top Streamlit Header (Github, Pencil, Settings) */
-                [data-testid="stHeader"], [data-testid="stToolbar"], header {
+                /* Sirf top right ke tools hide honge (Manage App, Settings, Github, Pencil) */
+                [data-testid="stToolbar"] {
                     display: none !important;
                 }
-                /* Hide Bottom-Right "Manage App" Button in Streamlit Cloud */
-                div[class*="viewerBadge"] {
+                
+                /* Master Fix: Streamlit Cloud ka Bottom-Right Manage App Badge hide karne ke liye */
+                [class*="viewerBadge"], 
+                [class*="ViewerBadge"], 
+                .viewerBadge_container, 
+                .viewerBadge_link, 
+                a[href*="manage.streamlit.io"] {
                     display: none !important;
                 }
             </style>
@@ -817,6 +831,7 @@ if check_password():
                     total_row = {"Source Tag": "GRAND TOTAL"}
                     for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
                     
+                    # Insert Total Row at index 0 (Top)
                     roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
                     
                     # Formula for Total Row
