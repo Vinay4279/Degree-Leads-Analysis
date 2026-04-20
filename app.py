@@ -4,28 +4,11 @@ import mysql.connector
 import datetime
 import base64
 
-# --- 1. PAGE CONFIGURATION (Added expanded sidebar state) ---
-st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
+# --- 1. PAGE CONFIGURATION & CEO-LEVEL ENTERPRISE UI ---
+st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
 st.markdown("""
 <style>
-    /* === STRICT RIGHT PORTION HIDE (Permanently Hide Top-Right Icons Only) === */
-    [data-testid="stHeaderActionElements"] { display: none !important; visibility: hidden !important; }
-    [data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
-    [data-testid="stToolbarActions"] { display: none !important; visibility: hidden !important; }
-    .stAppDeployButton { display: none !important; visibility: hidden !important; }
-    #MainMenu { display: none !important; visibility: hidden !important; }
-    button[title="Manage app"] { display: none !important; visibility: hidden !important; }
-    [data-testid="manage-app-button"] { display: none !important; visibility: hidden !important; }
-    
-    /* === LEFT PORTION UNHIDE (Keep Sidebar Toggle Arrow Fully Visible) === */
-    [data-testid="collapsedControl"] {
-        display: inline-flex !important; 
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 99999 !important;
-    }
-
     /* Main Title Styling - Premium Gradient */
     .gradient-text {
         background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
@@ -273,7 +256,7 @@ if check_password():
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                [data-testid="stHeaderActionElements"] {
+                [data-testid="stToolbar"] {
                     display: none !important;
                 }
             </style>
