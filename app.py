@@ -254,7 +254,11 @@ def check_password():
         st.markdown("""
             <style>
                 [data-testid="stToolbar"] {
-                    display: none !important;
+                    visibility: hidden !important;
+                }
+                [data-testid="stSidebarCollapsedControl"] {
+                    visibility: visible !important;
+                    display: flex !important;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -291,6 +295,11 @@ if check_password():
             <style>
                 [data-testid="stToolbar"] {
                     display: flex !important;
+                    visibility: visible !important;
+                }
+                [data-testid="stSidebarCollapsedControl"] {
+                    visibility: visible !important;
+                    display: flex !important;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -298,7 +307,11 @@ if check_password():
         st.markdown("""
             <style>
                 [data-testid="stToolbar"] {
-                    display: none !important;
+                    visibility: hidden !important;
+                }
+                [data-testid="stSidebarCollapsedControl"] {
+                    visibility: visible !important;
+                    display: flex !important;
                 }
             </style>
         """, unsafe_allow_html=True)
