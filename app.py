@@ -3,8 +3,6 @@ import pandas as pd
 import mysql.connector
 import datetime
 import base64
-import json
-import os
 
 # --- 1. PAGE CONFIGURATION & CEO-LEVEL ENTERPRISE UI ---
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
@@ -160,46 +158,29 @@ USERS = {
     "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"} # ADMIN
 }
 
-# --- ADDED: FILE-BASED MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
-IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-TRACKER_FILE = "daily_login_tracker.json"
-
+# --- ADDED: SERVER-SIDE MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
+@st.cache_resource
 def get_daily_login_tracker():
-    """Reads the login tracker from a JSON file to survive logouts."""
-    today_str = datetime.datetime.now(IST).strftime("%Y-%m-%d")
-    
-    if os.path.exists(TRACKER_FILE):
-        try:
-            with open(TRACKER_FILE, "r") as f:
-                tracker = json.load(f)
-        except:
-            tracker = {}
-    else:
-        tracker = {}
-        
-    # Clear old days data to save space, and initialize today
-    if today_str not in tracker:
-        tracker = {today_str: {}}
-        
-    return tracker, today_str
-
-def save_daily_login_tracker(tracker):
-    """Saves the tracker to a JSON file."""
-    with open(TRACKER_FILE, "w") as f:
-        json.dump(tracker, f)
+    return {}
 
 def generate_token(uname):
     """Generates a token valid only for today, including PERMANENT initial login timestamp in IST"""
-    tracker, today_str = get_daily_login_tracker()
+    tracker = get_daily_login_tracker()
+    today_str = str(datetime.date.today())
     
-    # If user is logging in for the first time today, save the exact time permanently
-    if uname not in tracker[today_str]:
-        tracker[today_str][uname] = datetime.datetime.now(IST).strftime("%d %b %Y %H:%M")
-        save_daily_login_tracker(tracker)
+    # Clear old days data to save memory, and initialize today
+    if today_str not in tracker:
+        tracker.clear() 
+        tracker[today_str] = {}
         
-    # Fetch the locked first login time from file memory
+    # If user is logging in for the first time today, save the exact time
+    if uname not in tracker[today_str]:
+        ist_timezone = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        tracker[today_str][uname] = datetime.datetime.now(ist_timezone).strftime("%d %b %Y %H:%M")
+        
+    # Fetch the locked first login time from server memory
     login_time = tracker[today_str][uname]
-    raw = f"{uname}|{today_str}|{login_time}"
+    raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
 def verify_token(token):
@@ -207,15 +188,13 @@ def verify_token(token):
     try:
         raw = base64.b64decode(token).decode()
         parts = raw.split("|")
-        today_str = datetime.datetime.now(IST).strftime("%Y-%m-%d")
-        
         if len(parts) == 3:
             uname, date_str, login_time = parts
-            if date_str == today_str and uname in USERS:
+            if date_str == str(datetime.date.today()) and uname in USERS:
                 return uname, login_time
         elif len(parts) == 2:
             uname, date_str = parts
-            if date_str == today_str and uname in USERS:
+            if date_str == str(datetime.date.today()) and uname in USERS:
                 return uname, "Session Started Today"
     except:
         pass
