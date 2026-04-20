@@ -1,15 +1,22 @@
+# ==============================================================================
+# STEP 1: IMPORTING LIBRARIES (Zaroori modules import kar rahe hain)
+# ==============================================================================
 import streamlit as st
 import pandas as pd
 import mysql.connector
 import datetime
 import base64
 
-# --- 1. PAGE CONFIGURATION & CEO-LEVEL ENTERPRISE UI ---
+# ==============================================================================
+# STEP 2: PAGE CONFIGURATION & ENTERPRISE UI STYLING (CSS)
+# ==============================================================================
+# Page ka naam aur icon set karna
 st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout="wide")
 
+# CSS styling for professional look, center alignment, and removing extra spaces
 st.markdown("""
 <style>
-    /* Main Title Styling - Premium Gradient */
+    /* Main Title par premium blue gradient color lagana */
     .gradient-text {
         background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
         -webkit-background-clip: text;
@@ -18,7 +25,7 @@ st.markdown("""
         letter-spacing: -1px;
     }
     
-    /* Modern Tabs Styling */
+    /* Tabs (Main Menu) ko modern aur sleek look dena */
     div[data-testid="stTabs"] button {
         font-size: 16px;
         font-weight: 600;
@@ -32,7 +39,7 @@ st.markdown("""
         background: rgba(0, 242, 254, 0.05);
     }
     
-    /* Sleek Glassmorphism Input Fields */
+    /* Input fields (Search, Date, Selectbox) ko Glassmorphism (transparent) look dena */
     .stTextInput>div>div>input, 
     .stDateInput>div>div>input, 
     .stSelectbox>div>div>div {
@@ -53,13 +60,13 @@ st.markdown("""
         background-color: rgba(15, 23, 42, 0.8) !important;
     }
 
-    /* Hide the form border to maintain clean login UI */
+    /* Login Form ki default border ko chhupana taaki clean dikhe */
     [data-testid="stForm"] {
         border: none !important;
         padding: 0 !important;
     }
 
-    /* Premium DataFrames */
+    /* Data Tables (DataFrames) ko premium borders aur shadow dena */
     .stDataFrame {
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px;
@@ -72,7 +79,7 @@ st.markdown("""
         transition: 0.3s ease;
     }
 
-    /* VIP Professional Buttons & Download Buttons */
+    /* Buttons (Login, Refresh, Download) ko premium dark look aur hover effect dena */
     .stButton>button, .stFormSubmitButton>button, .stDownloadButton>button {
         border-radius: 8px !important;
         font-weight: 600 !important;
@@ -91,23 +98,15 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* Info Boxes (First Login Tracker) */
-    .stAlert {
-        border-radius: 8px !important;
-        border: 1px solid rgba(0, 242, 254, 0.2) !important;
-        background-color: rgba(0, 242, 254, 0.05) !important;
-        color: #e2e8f0 !important;
-        backdrop-filter: blur(10px);
-    }
-
-    /* Layout Tweaks for Enterprise Width */
+    /* Layout ko bada karne ke liye max-width ko 96% karna */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 2rem !important;
         max-width: 96% !important;
     }
     
-    /* === SIDEBAR CENTER ALIGNMENT & EXTRA SPACE REMOVAL CSS === */
+    /* --- SIDEBAR ALIGNMENT & EXTRA SPACE REMOVAL --- */
+    /* Sidebar ke sabhi text aur elements ko center align karna */
     [data-testid="stSidebar"] { text-align: center; }
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
@@ -117,11 +116,13 @@ st.markdown("""
     [data-testid="stSidebar"] input { text-align: center !important; }
     [data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] { justify-content: center !important; }
     [data-testid="stSidebar"] [data-testid="stAlert"] { display: flex; justify-content: center; text-align: center; }
+    
+    /* Sidebar ki faaltu empty space (padding) ko hatana */
     [data-testid="stSidebarHeader"] { padding-top: 1rem !important; padding-bottom: 0rem !important; min-height: auto !important; }
     [data-testid="stSidebarUserContent"] { padding-top: 0rem !important; }
     hr { border-color: rgba(255, 255, 255, 0.1) !important; margin-top: 1rem !important; margin-bottom: 1rem !important; }
     
-    /* === GLOBALLY HIDE SHARE & RECORD BUTTONS FOR ALL USERS === */
+    /* --- GLOBALLY HIDE SHARE & RECORD BUTTONS FOR ALL USERS --- */
     button[title="Share app"], button[title="Record a screencast"],
     [data-testid="stToolbar"] button[aria-label="Share"],
     [data-testid="stToolbar"] button[aria-label="Record a screencast"] {
@@ -130,7 +131,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ADVANCED LOGIN SYSTEM (Till Midnight Persistence & Time Tracking) ---
+# ==============================================================================
+# STEP 3: USER CREDENTIALS & LOGIN SYSTEM (Security & Memory Tracking)
+# ==============================================================================
+# Users ki dictionary jisme ID, Password aur Full Name save hai
 USERS = {
     "hx1001": {"pwd": "hx1001", "name": "Vipul Bhatnagar"},
     "hx1192": {"pwd": "hx1192", "name": "Vipin Rawat"},
@@ -140,18 +144,22 @@ USERS = {
 }
 
 # --- SERVER-SIDE MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
+# Ye function page refresh/logout hone par bhi First Login time ko memory me lock rakhta hai
 @st.cache_resource
 def get_daily_login_tracker():
     return {}
 
+# Token generate karna taaki URL me session save rahe (Din bhar ke liye)
 def generate_token(uname):
     tracker = get_daily_login_tracker()
     today_str = str(datetime.date.today())
     
+    # Naya din shuru hote hi purani memory clear karna
     if today_str not in tracker:
         tracker.clear() 
         tracker[today_str] = {}
         
+    # Agar user aaj pehli baar aaya hai, toh uska Indian Time (IST) save kar lo
     if uname not in tracker[today_str]:
         ist_timezone = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         tracker[today_str][uname] = datetime.datetime.now(ist_timezone).strftime("%d %b %Y %H:%M")
@@ -160,6 +168,7 @@ def generate_token(uname):
     raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
+# Token ko verify karna ki kya wo aaj ka hi token hai
 def verify_token(token):
     try:
         raw = base64.b64decode(token).decode()
@@ -168,15 +177,13 @@ def verify_token(token):
             uname, date_str, login_time = parts
             if date_str == str(datetime.date.today()) and uname in USERS:
                 return uname, login_time
-        elif len(parts) == 2:
-            uname, date_str = parts
-            if date_str == str(datetime.date.today()) and uname in USERS:
-                return uname, "Session Started Today"
     except:
         pass
     return None, None
 
+# Password check karne ka main function
 def check_password():
+    # URL mein token check karke auto-login karna
     if "token" in st.query_params:
         valid_user, login_time = verify_token(st.query_params["token"])
         if valid_user:
@@ -185,9 +192,11 @@ def check_password():
             st.session_state["current_user"] = USERS[valid_user]["name"]
             st.session_state["login_time"] = login_time
 
+    # Agar login nahi hai, toh None rakho taaki error na dikhe
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = None 
 
+    # Submit button dabane ke baad id/password check karna
     def password_entered():
         uname = st.session_state["username_input"].strip().lower()
         pwd = st.session_state["password_input"].strip().lower()
@@ -196,6 +205,7 @@ def check_password():
             st.session_state["password_correct"] = True
             st.session_state["username"] = uname
             st.session_state["current_user"] = USERS[uname]["name"]
+            
             new_token = generate_token(uname)
             st.query_params["token"] = new_token
             _, login_time = verify_token(new_token)
@@ -204,6 +214,7 @@ def check_password():
         else:
             st.session_state["password_correct"] = False 
 
+    # Agar password_correct me True nahi hai, toh Login Screen dikhana
     if not st.session_state.get("password_correct"):
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
         col1, col2, col3 = st.columns([1, 1.5, 1]) 
@@ -212,71 +223,93 @@ def check_password():
             st.markdown("<h1 style='text-align: center; font-size: 36px;'>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             
+            # Form ka use kiya gaya hai taaki "Press Enter to Apply" ka text na aaye
             with st.form("login_form"):
                 st.text_input("Username", key="username_input")
                 st.text_input("Password", type="password", key="password_input")
                 st.markdown("<br>", unsafe_allow_html=True)
                 submitted = st.form_submit_button("Secure Login", use_container_width=True, on_click=password_entered)
             
+            # Sirf tabhi error dikhana jab ID/Pass galat ho (False)
             if st.session_state["password_correct"] == False:
                 st.error("😕 Invalid Username or Password")
         return False
     return True
 
-# --- 3. MAIN DASHBOARD ---
+# ==============================================================================
+# STEP 4: MAIN DASHBOARD & SIDEBAR LAYOUT
+# ==============================================================================
+# Agar user successfully login kar leta hai, toh dashboard dikhana
 if check_password():
     
-    # --- SECURITY: HIDE TOP RIBBON FOR NON-ADMINS ---
+    # --- SECURITY: STRICTLY HIDE "MANAGE APP" & TOP RIBBON FOR NON-ADMINS ---
+    # Sirf hx0335 ko access milega, baaki sabse hide kar diya gaya hai
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                /* Completely hide Manage App, Github, Pencil for Non-Admins */
-                [data-testid="stHeader"], [data-testid="stToolbar"] {
+                /* Hide Top Streamlit Header (Github, Pencil, Settings) */
+                [data-testid="stHeader"], [data-testid="stToolbar"], header {
+                    display: none !important;
+                }
+                /* Hide Bottom-Right "Manage App" Button in Streamlit Cloud */
+                div[class*="viewerBadge"] {
                     display: none !important;
                 }
             </style>
         """, unsafe_allow_html=True)
     
-    # --- SIDEBAR ---
+    # --- SIDEBAR CREATION ---
     st.sidebar.markdown("<div style='text-align: center; margin-top: -10px; margin-bottom: 5px;'><small style='color: #94a3b8;'><b>Created By Vinay Solanki (HX0335)</b></small></div>", unsafe_allow_html=True)
     st.sidebar.markdown("<h2 style='text-align: center; margin-top: 0px;'>Hero Vired Pvt Ltd.</h2>", unsafe_allow_html=True)
     
+    # Center aligned Welcome Name
     st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 200, 0, 0.3); background-color: rgba(0, 150, 0, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>Welcome {st.session_state['current_user']}</p></div>", unsafe_allow_html=True)
     
+    # Center aligned First Login Time
     if "login_time" in st.session_state:
         st.sidebar.markdown(f"<div style='text-align: center; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.3); background-color: rgba(0, 242, 254, 0.05); padding: 5px; color: #e2e8f0; margin-top: 5px; margin-bottom: 5px;'><p style='margin: 0; font-weight: 600;'>🕒 First Login: {st.session_state['login_time']}</p></div>", unsafe_allow_html=True)
         
     st.sidebar.markdown("---")
     
+    # Refresh Button
     if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
         
     st.sidebar.markdown("---")
     
+    # Date Filters (Default is 1st day of month to today)
     today = datetime.date.today()
     first_day_of_month = today.replace(day=1)
     
     start_date = st.sidebar.date_input("Start Date", value=first_day_of_month)
     end_date = st.sidebar.date_input("End Date", value=today)
     
+    # Lead Source Filter
     source_filter = st.sidebar.selectbox("Source", ["All", "FACEBOOK", "GOOGLE", "LINKEDIN"])
     
+    # Data Ownership Filter (Only for Admins/Managers)
     owner_filter = "All"
     current_username = st.session_state["username"]
-    
     if current_username not in ["hx1192", "hx1464", "hx0000"]:
         owner_filter = st.sidebar.selectbox("Owner", ["All", "Vipin & Pramod", "Devender"])
     
     st.sidebar.markdown("---")
+    
+    # Logout Button
     if st.sidebar.button("Logout", use_container_width=True):
         st.query_params.clear()
         st.session_state.clear()
         st.rerun()
 
+    # Main Dashboard Title
     st.markdown("<h1>🎓 <span class='gradient-text'>Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
 
-    # --- DATABASE & GOOGLE SHEET CONNECTION ---
+# ==============================================================================
+# STEP 5: DATA FETCHING FUNCTIONS (MySQL & Google Sheets)
+# ==============================================================================
+    
+    # MySQL Database Connection & Query Execution
     @st.cache_data(ttl=600) 
     def load_data_from_mysql(uname):
         try:
@@ -288,6 +321,7 @@ if check_password():
                 password=st.secrets["mysql"]["password"]
             )
             
+            # User ke hisaab se unko unhi ka data dikhane ki condition
             if uname in ['hx1192', 'hx1464']:
                 tags_condition = "('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE')"
             elif uname == 'hx0000':
@@ -295,6 +329,7 @@ if check_password():
             else:
                 tags_condition = "('META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE', 'META-DEVENDER', 'GOOGLE-DEVENDER')"
             
+            # Main SQL Query jo database se Data fetch karegi
             query = f"""
             WITH T1 AS (
             SELECT DISTINCT
@@ -377,6 +412,7 @@ if check_password():
             st.error(f"Database connection error: {e}")
             return pd.DataFrame()
 
+    # Inhouse Spends Google Sheet Data Load
     @st.cache_data(ttl=600)
     def load_google_sheet():
         sheet_url = "https://docs.google.com/spreadsheets/d/1dD2DmVLAMOkdCe1dwUAO9eX5S5_31ikovd0UyoYDiZI/export?format=csv&gid=945195723"
@@ -388,6 +424,7 @@ if check_password():
             st.error(f"Failed to load Overall Spends Google Sheet: {e}")
             return pd.DataFrame()
 
+    # Devender Spends Google Sheet Data Load
     @st.cache_data(ttl=600)
     def load_devender_spends():
         sheet_url = "https://docs.google.com/spreadsheets/d/1KJ--JKXJqtP_yTiW-Ok0PpIADv9AXyagspFfZBiYChY/export?format=csv&gid=1016805741"
@@ -399,6 +436,7 @@ if check_password():
             st.error(f"Failed to load Devender Spends Sheet: {e}")
             return pd.DataFrame()
 
+    # Enrolled (Booked Amount) Data Google Sheet Data Load
     @st.cache_data(ttl=600)
     def load_enrolled_data():
         sheet_url = "https://docs.google.com/spreadsheets/d/1hMcaFk4l9xmOUK6lB0LgpWMbHZkLDrMzzQUi8oBX6J8/export?format=csv&gid=0"
@@ -410,26 +448,35 @@ if check_password():
             st.error(f"Failed to load Enrolled Data Sheet: {e}")
             return pd.DataFrame()
 
+    # Ek sath saare Data functions ko Call karna
     raw_data = load_data_from_mysql(current_username)
     gs_data = load_google_sheet()
     devender_data = load_devender_spends()
     enrolled_data = load_enrolled_data()
 
+# ==============================================================================
+# STEP 6: DATA PREPROCESSING & TABS GENERATION
+# ==============================================================================
+    # Streamlit me 5 TABS create karna
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Search & RAW Data", "📈 University Analytics", "📈 Campaign Analytics", "📊 Daily Leads", "💰 ROAS Dashboard"])
 
     if not raw_data.empty:
+        # Saari Universities ko Alphabetical Sort kar lena
         all_universities = sorted(raw_data['Hyperlap_University_Name'].dropna().unique())
         
+        # Sidebar ke 'Source' Filter ko Data par apply karna
         if source_filter != "All":
             filtered_data = raw_data[raw_data['Lead_Type'] == source_filter].copy()
         else:
             filtered_data = raw_data.copy()
 
+        # Sidebar ke 'Owner' Filter ko Data par apply karna
         if owner_filter == "Vipin & Pramod":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META INHOUSE', 'GOOGLE INHOUSE', 'LINKEDIN INHOUSE'])]
         elif owner_filter == "Devender":
             filtered_data = filtered_data[filtered_data['Source_TAG'].isin(['META-DEVENDER', 'GOOGLE-DEVENDER'])]
 
+        # Data ke Andar sabhi Date Columns ko standard TimeStamp me badalna taaki filter kaam kare
         date_cols = ['CreatedOn_Date', 'Connected_Thirty_sec', 'Counselled_DT', 'Offer_DT', 'Converted_DT']
         for col in date_cols:
             filtered_data[col] = pd.to_datetime(filtered_data[col], errors='coerce')
@@ -437,20 +484,24 @@ if check_password():
         start_ts = pd.to_datetime(start_date)
         end_ts = pd.to_datetime(end_date)
 
-    # --- TAB 1: Search & RAW Data ---
+    # -------------------------------------------------------------------------
+    # TAB 1: SEARCH & RAW DATA
+    # -------------------------------------------------------------------------
     with tab1:
         if not raw_data.empty:
             search_query = st.text_input("Search any keyword...")
             if search_query:
+                # Agar search kiya hai, toh wo filter karega
                 mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_query, case=False)).any(axis=1)
                 search_df = filtered_data[mask]
                 display_df = search_df.copy()
                 for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
             else:
+                # Warna pura data dikhayega
                 display_df = filtered_data.copy()
                 for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
             
-            # --- CSV DOWNLOAD BUTTON ---
+            # --- CSV DOWNLOAD BUTTON FOR TAB 1 ---
             colA, colB = st.columns([8, 2])
             with colB:
                 st.download_button(label="📥 Download CSV", data=display_df.to_csv(index=False).encode('utf-8'), file_name="Raw_Data.csv", mime="text/csv", use_container_width=True)
@@ -460,13 +511,17 @@ if check_password():
         else:
             st.warning("Data failed to load. Please check your SQL Query or Database connection.")
 
-    # --- TAB 2: UNIVERSITY ANALYTICS ---
+    # -------------------------------------------------------------------------
+    # TAB 2: UNIVERSITY ANALYTICS
+    # -------------------------------------------------------------------------
     with tab2:
         if not raw_data.empty:
             if start_date <= end_date:
+                # Date ke hisaab se basic data filter karna
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
 
+                # Booked Amount ka Data Google Sheet se nikalna (with crash safety)
                 enrolled_filtered_tab2 = pd.DataFrame()
                 if not enrolled_data.empty:
                     enr_data_safe = enrolled_data.copy()
@@ -474,17 +529,21 @@ if check_password():
                     uni_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'ENROLLED UNIVERSITY'), None)
                     acc_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'TOTAL ACCRUED AMOUNT'), None)
                     tag_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED SOURCE TAG'), None)
+                    
                     if date_col and uni_col and acc_col and tag_col:
                         enr_data_safe[date_col] = pd.to_datetime(enr_data_safe[date_col], errors='coerce').dt.date
+                        # Comma hata kar Number banana (Crash preventer)
                         enr_data_safe[acc_col] = pd.to_numeric(enr_data_safe[acc_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                         
                         valid_tags = filtered_data['Source_TAG'].dropna().unique()
                         valid_tags_clean = [str(t).replace(' ', '').replace('-', '').upper() for t in valid_tags]
+                        # Spelling Fixes for Devender
                         if 'METADEVENDER' in valid_tags_clean: valid_tags_clean.append('METADEVENDAR')
                         if 'GOOGLEDEVENDER' in valid_tags_clean: valid_tags_clean.append('GOOGLEDEVENDAR')
                         enr_tags_clean = enr_data_safe[tag_col].astype(str).str.replace(' ', '', regex=False).str.replace('-', '', regex=False).str.upper()
                         enrolled_filtered_tab2 = enr_data_safe[(enr_data_safe[date_col] >= start_date) & (enr_data_safe[date_col] <= end_date) & (enr_tags_clean.isin(valid_tags_clean))]
 
+                # Har University ki Metrics count karna
                 report_data = []
                 for uni in all_universities:
                     df_uni_sm = df_created[df_created['Hyperlap_University_Name'] == uni]
@@ -538,12 +597,16 @@ if check_password():
                     })
 
                 report_df = pd.DataFrame(report_data)
+                
+                # --- GRAND TOTAL ROW LOGIC ---
                 total_row = {'Hyperlap Universities': 'Grand Total'}
                 sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 for col in sum_columns: total_row[col] = report_df[col].sum()
                 
+                # Grand Total Row ko Dataframe ke TOP (Index 0) par jodna
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
+                # Top Row par Division (Percentages) ko thik karna
                 report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 report_df.at[0, 'Connected 30 Sec SM %'] = report_df.at[0, 'Connected 30 Sec SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 report_df.at[0, 'Counselled SM %'] = report_df.at[0, 'Counselled SM'] / report_df.at[0, 'Connected 30 Sec SM'] if report_df.at[0, 'Connected 30 Sec SM'] > 0 else 0
@@ -552,13 +615,14 @@ if check_password():
                 report_df.at[0, 'Counselled To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Counselled SM'] if report_df.at[0, 'Counselled SM'] > 0 else 0
                 report_df.at[0, 'Lead To Converted % SM'] = report_df.at[0, 'Converted SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
                 
+                # Formatting Dena (Decimal places % aur Float)
                 styled_report = report_df.style.format({
                     "Booked Amount": "{:.2f}", "Junk SM %": "{:.2%}", "Connected 30 Sec SM %": "{:.2%}",
                     "Counselled SM %": "{:.2%}", "Offer To Counselled % SM": "{:.2%}", "Offer To Converted % SM": "{:.2%}",
                     "Counselled To Converted % SM": "{:.2%}", "Lead To Converted % SM": "{:.2%}"
                 })
                 
-                # --- CSV DOWNLOAD BUTTON ---
+                # --- CSV DOWNLOAD BUTTON FOR TAB 2 ---
                 colA, colB = st.columns([8, 2])
                 with colB:
                     st.download_button(label="📥 Download CSV", data=report_df.to_csv(index=False).encode('utf-8'), file_name="University_Analytics.csv", mime="text/csv", use_container_width=True)
@@ -567,18 +631,26 @@ if check_password():
             else:
                 st.error("❌ End Date cannot be earlier than the Start Date!")
 
-    # --- TAB 3: CAMPAIGN ANALYTICS ---
+    # -------------------------------------------------------------------------
+    # TAB 3: CAMPAIGN ANALYTICS
+    # -------------------------------------------------------------------------
     with tab3:
         if not raw_data.empty:
             if start_date <= end_date:
                 created_mask = (filtered_data['CreatedOn_Date'] >= start_ts) & (filtered_data['CreatedOn_Date'] <= end_ts)
                 df_created = filtered_data[created_mask]
+                
+                # Google Sheet ka Spend Load Karna Safely
                 if not gs_data.empty and all(col in gs_data.columns for col in ['Day', 'Cost', 'Campaign', 'Source']):
                     gs_data_safe = gs_data.copy()
                     gs_data_safe['Day'] = pd.to_datetime(gs_data_safe['Day'], errors='coerce').dt.date
+                    
+                    # Commas remove karna taaki float ban sake (prevent String crash)
                     gs_data_safe['Cost'] = pd.to_numeric(gs_data_safe['Cost'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                    
                     gs_mask = (gs_data_safe['Day'] >= start_date) & (gs_data_safe['Day'] <= end_date)
                     gs_filtered = gs_data_safe[gs_mask].copy()
+                    
                     if source_filter != "All":
                         if source_filter == "GOOGLE": gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'GOOGLE INHOUSE']
                         elif source_filter == "FACEBOOK": gs_filtered = gs_filtered[gs_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']
@@ -587,6 +659,7 @@ if check_password():
                 else:
                     gs_filtered = pd.DataFrame(); all_campaigns_gs = []
 
+                # Har Campaign ki metrics count karna
                 report_data_camp = []
                 for camp in all_campaigns_gs:
                     camp_spend = float(gs_filtered[gs_filtered['Campaign'] == camp]['Cost'].sum())
@@ -605,14 +678,18 @@ if check_password():
                         "Offer SM": len(df_camp_sm[(df_camp_sm['Offer_DT'] >= start_ts) & (df_camp_sm['Offer_DT'] <= end_ts)]),
                         "Converted SM": len(df_camp_sm[(df_camp_sm['Converted_DT'] >= start_ts) & (df_camp_sm['Converted_DT'] <= end_ts)])
                     })
+                
                 if report_data_camp:
                     report_df_camp = pd.DataFrame(report_data_camp)
+                    
+                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row_camp = {'Source Campaign': 'Grand Total'}
                     sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Connected 30 Sec SM', 'Counselled SM', 'Offer SM', 'Converted SM']
                     for col in sum_columns_camp: total_row_camp[col] = report_df_camp[col].sum()
+                    
                     report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
                     
-                    # --- CSV DOWNLOAD BUTTON ---
+                    # --- CSV DOWNLOAD BUTTON FOR TAB 3 ---
                     colA, colB = st.columns([8, 2])
                     with colB:
                         st.download_button(label="📥 Download CSV", data=report_df_camp.to_csv(index=False).encode('utf-8'), file_name="Campaign_Analytics.csv", mime="text/csv", use_container_width=True)
@@ -620,34 +697,47 @@ if check_password():
                     st.dataframe(report_df_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
                 else: st.info("No Campaign Data found.")
 
-    # --- TAB 4: DAILY LEAD RECEIVED ---
+    # -------------------------------------------------------------------------
+    # TAB 4: DAILY LEAD RECEIVED (Present Day Only)
+    # -------------------------------------------------------------------------
     with tab4:
         if not raw_data.empty:
             today_ts = pd.to_datetime(datetime.date.today())
             
-            # --- HEADER & DOWNLOAD BUTTON ALIGNMENT ---
+            # Subheader aur Download Button ko arrange karna
             colA, colB = st.columns([8, 2])
             with colA:
                 st.subheader(f"📅 Daily Leads Received (Today: {today_ts.strftime('%d %b %Y')})")
             
+            # Sirf Aaj ka data filter karna
             df_today = filtered_data[filtered_data['CreatedOn_Date'] == today_ts]
+            
+            # Required Universities mapping
             uni_mapping = {"ALLIANCE UNIVERSITY": "alliance", "AMITY UNIVERSITY": "amity", "BHARATI VIDYAPEETH UNIVERSITY": "bharati", "DR. D Y PATIL UNIVERSITY": "patil", "GALGOTIAS UNIVERSITY": "galgotias", "GENERIC UNIVERSITY": "generic", "GLA UNIVERSITY": "gla", "LOVELY PROFESSIONAL UNIVERSITY": "lovely", "MANIPAL UNIVERSITY": "manipal", "NMIMS": "nmims", "SHOOLINI UNIVERSITY": "shoolini", "UTTARANCHAL UNIVERSITY": "uttaranchal"}
+            
             daily_report_data = []
             for display_name, search_key in uni_mapping.items():
                 df_uni_today = df_today[df_today['Hyperlap_University_Name'].astype(str).str.contains(search_key, case=False, na=False)]
                 daily_report_data.append({"HYPERLAP_UNIVERSITY_NAME": display_name, "GOOGLE-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE-DEVENDER']), "META-DEVENDER": len(df_uni_today[df_uni_today['Source_TAG'] == 'META-DEVENDER']), "GOOGLE INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'GOOGLE INHOUSE']), "META INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'META INHOUSE']), "LINKEDIN INHOUSE": len(df_uni_today[df_uni_today['Source_TAG'] == 'LINKEDIN INHOUSE']), "TOTAL LEADS": len(df_uni_today)})
+            
             df_daily = pd.DataFrame(daily_report_data)
+            
+            # --- GRAND TOTAL ROW AT THE TOP ---
             total_row_daily = {"HYPERLAP_UNIVERSITY_NAME": "GRAND TOTAL"}
             sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
             for col in sum_cols_daily: total_row_daily[col] = df_daily[col].sum()
+            
             df_daily = pd.concat([pd.DataFrame([total_row_daily]), df_daily], ignore_index=True)
             
+            # --- CSV DOWNLOAD BUTTON FOR TAB 4 ---
             with colB:
                 st.download_button(label="📥 Download CSV", data=df_daily.to_csv(index=False).encode('utf-8'), file_name="Daily_Leads.csv", mime="text/csv", use_container_width=True)
             
             st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
 
-    # --- TAB 5: ROAS DASHBOARD ---
+    # -------------------------------------------------------------------------
+    # TAB 5: ROAS DASHBOARD
+    # -------------------------------------------------------------------------
     with tab5:
         if not raw_data.empty:
             if start_date <= end_date:
@@ -655,6 +745,7 @@ if check_password():
                 valid_unis_clean = [str(u).replace('_', ' ').strip().upper() for u in filtered_data['Hyperlap_University_Name'].dropna().unique()]
                 unique_tags = sorted(filtered_data['Source_TAG'].dropna().unique())
                 
+                # --- CLEANING SPENDS DATA EXPLICITLY TO PREVENT STRING CRASHES ---
                 gs_inhouse_filtered = pd.DataFrame()
                 if not gs_data.empty and 'Day' in gs_data.columns and 'Cost' in gs_data.columns:
                     temp_gs = gs_data.copy()
@@ -677,6 +768,7 @@ if check_password():
                     spend = 0.0
                     booked_amount = 0.0
                     
+                    # Spend logic map karna
                     if tag == 'META INHOUSE' and not gs_inhouse_filtered.empty:
                         spend = float(gs_inhouse_filtered[gs_inhouse_filtered['Source'].astype(str).str.strip().str.upper() == 'META INHOUSE']['Cost'].sum())
                     elif tag == 'GOOGLE INHOUSE' and not gs_inhouse_filtered.empty:
@@ -693,6 +785,7 @@ if check_password():
                     conv_sm = len(df_tag_sm[(df_tag_sm['Converted_DT'] >= start_ts) & (df_tag_sm['Converted_DT'] <= end_ts)])
                     conv_ovr = len(filtered_data[(filtered_data['Source_TAG'] == tag) & (filtered_data['Converted_DT'] >= start_ts) & (filtered_data['Converted_DT'] <= end_ts)])
                     
+                    # Booked amount map karna
                     if not enrolled_data.empty:
                         enr_data_safe = enrolled_data.copy()
                         date_col = next((c for c in enr_data_safe.columns if str(c).strip().upper() == 'CONVERTED DATE'), None)
@@ -714,23 +807,29 @@ if check_password():
                             
                             booked_amount = float(enrolled_filtered[mask][acc_col].sum())
 
+                    # ROAS Dashboard Data Append karna
                     roas_data.append({"Source Tag": tag, "Spends": spend, "Lead Received": lead_received, "CPL": spend/lead_received if lead_received>0 else 0, "Converted SM": conv_sm, "Converted Overall": conv_ovr, "Booked Amount": booked_amount, "Booked ROAS": booked_amount/spend if spend>0 else 0, "CAC": spend/conv_ovr if conv_ovr>0 else 0, "Lead To Converted SM %": conv_sm/lead_received if lead_received>0 else 0, "Lead To Converted Overall %": conv_ovr/lead_received if lead_received>0 else 0})
                 
                 if roas_data:
                     roas_df = pd.DataFrame(roas_data)
+                    
+                    # --- GRAND TOTAL ROW AT THE TOP ---
                     total_row = {"Source Tag": "GRAND TOTAL"}
                     for col in ["Spends", "Lead Received", "Converted SM", "Converted Overall", "Booked Amount"]: total_row[col] = roas_df[col].sum()
+                    
                     roas_df = pd.concat([pd.DataFrame([total_row]), roas_df], ignore_index=True)
                     
+                    # Formula for Total Row
                     roas_df.at[0, "CPL"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     roas_df.at[0, "Booked ROAS"] = roas_df.at[0, "Booked Amount"] / roas_df.at[0, "Spends"] if roas_df.at[0, "Spends"] > 0 else 0
                     roas_df.at[0, "CAC"] = roas_df.at[0, "Spends"] / roas_df.at[0, "Converted Overall"] if roas_df.at[0, "Converted Overall"] > 0 else 0
                     roas_df.at[0, "Lead To Converted SM %"] = roas_df.at[0, "Converted SM"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     roas_df.at[0, "Lead To Converted Overall %"] = roas_df.at[0, "Converted Overall"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     
+                    # Final sequence user ki manga gayi list ke mutabik
                     col_order = ["Source Tag", "Spends", "Lead Received", "CPL", "Converted SM", "Converted Overall", "Booked Amount", "Booked ROAS", "CAC", "Lead To Converted SM %", "Lead To Converted Overall %"]
                     
-                    # --- CSV DOWNLOAD BUTTON ---
+                    # --- CSV DOWNLOAD BUTTON FOR TAB 5 ---
                     colA, colB = st.columns([8, 2])
                     with colB:
                         st.download_button(label="📥 Download CSV", data=roas_df[col_order].to_csv(index=False).encode('utf-8'), file_name="ROAS_Dashboard.csv", mime="text/csv", use_container_width=True)
