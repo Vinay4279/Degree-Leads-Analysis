@@ -39,7 +39,7 @@ st.markdown("""
         border-radius: 8px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         transition: all 0.3s ease-in-out !important;
-        background-color: rgba(30, 41, 59, 0.5) !important; /* Dark Slate */
+        background-color: rgba(30, 41, 59, 0.5) !important;
         color: white !important;
     }
     .stTextInput>div>div>input:focus, 
@@ -72,8 +72,8 @@ st.markdown("""
         transition: 0.3s ease;
     }
 
-    /* VIP Professional Buttons */
-    .stButton>button, .stFormSubmitButton>button {
+    /* VIP Professional Buttons & Download Buttons */
+    .stButton>button, .stFormSubmitButton>button, .stDownloadButton>button {
         border-radius: 8px !important;
         font-weight: 600 !important;
         letter-spacing: 0.5px !important;
@@ -83,7 +83,7 @@ st.markdown("""
         transition: all 0.3s ease !important;
         padding: 10px 24px !important;
     }
-    .stButton>button:hover, .stFormSubmitButton>button:hover {
+    .stButton>button:hover, .stFormSubmitButton>button:hover, .stDownloadButton>button:hover {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
         color: #ffffff !important;
         border: 1px solid transparent !important;
@@ -104,47 +104,28 @@ st.markdown("""
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 2rem !important;
-        max-width: 96% !important; /* Maximizes screen usage */
+        max-width: 96% !important;
     }
     
     /* === SIDEBAR CENTER ALIGNMENT & EXTRA SPACE REMOVAL CSS === */
-    [data-testid="stSidebar"] {
-        text-align: center;
-    }
+    [data-testid="stSidebar"] { text-align: center; }
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
-        text-align: center !important;
-    }
-    [data-testid="stSidebar"] label p {
-        text-align: center !important;
-        width: 100% !important;
-        display: block !important;
-    }
-    [data-testid="stSidebar"] input {
-        text-align: center !important;
-    }
-    [data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] {
-        justify-content: center !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stAlert"] {
-        display: flex;
-        justify-content: center;
-        text-align: center;
-    }
-    [data-testid="stSidebarHeader"] {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-        min-height: auto !important;
-    }
-    [data-testid="stSidebarUserContent"] {
-        padding-top: 0rem !important;
-    }
-    hr {
-        border-color: rgba(255, 255, 255, 0.1) !important;
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 { text-align: center !important; }
+    [data-testid="stSidebar"] label p { text-align: center !important; width: 100% !important; display: block !important; }
+    [data-testid="stSidebar"] input { text-align: center !important; }
+    [data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] { justify-content: center !important; }
+    [data-testid="stSidebar"] [data-testid="stAlert"] { display: flex; justify-content: center; text-align: center; }
+    [data-testid="stSidebarHeader"] { padding-top: 1rem !important; padding-bottom: 0rem !important; min-height: auto !important; }
+    [data-testid="stSidebarUserContent"] { padding-top: 0rem !important; }
+    hr { border-color: rgba(255, 255, 255, 0.1) !important; margin-top: 1rem !important; margin-bottom: 1rem !important; }
+    
+    /* === GLOBALLY HIDE SHARE & RECORD BUTTONS FOR ALL USERS === */
+    button[title="Share app"], button[title="Record a screencast"],
+    [data-testid="stToolbar"] button[aria-label="Share"],
+    [data-testid="stToolbar"] button[aria-label="Record a screencast"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -158,33 +139,28 @@ USERS = {
     "hx0335": {"pwd": "hx0335", "name": "Vinay Solanki"} # ADMIN
 }
 
-# --- ADDED: SERVER-SIDE MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
+# --- SERVER-SIDE MEMORY TO TRACK FIRST LOGIN PERMANENTLY FOR THE DAY ---
 @st.cache_resource
 def get_daily_login_tracker():
     return {}
 
 def generate_token(uname):
-    """Generates a token valid only for today, including PERMANENT initial login timestamp in IST"""
     tracker = get_daily_login_tracker()
     today_str = str(datetime.date.today())
     
-    # Clear old days data to save memory, and initialize today
     if today_str not in tracker:
         tracker.clear() 
         tracker[today_str] = {}
         
-    # If user is logging in for the first time today, save the exact time
     if uname not in tracker[today_str]:
         ist_timezone = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         tracker[today_str][uname] = datetime.datetime.now(ist_timezone).strftime("%d %b %Y %H:%M")
         
-    # Fetch the locked first login time from server memory
     login_time = tracker[today_str][uname]
     raw = f"{uname}|{datetime.date.today()}|{login_time}"
     return base64.b64encode(raw.encode()).decode()
 
 def verify_token(token):
-    """Checks if token is valid, belongs to today, and extracts login time"""
     try:
         raw = base64.b64decode(token).decode()
         parts = raw.split("|")
@@ -229,11 +205,8 @@ def check_password():
             st.session_state["password_correct"] = False 
 
     if not st.session_state.get("password_correct"):
-        # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
-        
         col1, col2, col3 = st.columns([1, 1.5, 1]) 
-        
         with col2:
             st.markdown("<h3 style='text-align: center; color: #94a3b8; font-weight: 500; letter-spacing: 2px; margin-bottom: -15px;'>HERO VIRED PVT LTD.</h3>", unsafe_allow_html=True)
             st.markdown("<h1 style='text-align: center; font-size: 36px;'>🔐 <span class='gradient-text'>Login to Degree Leads Analysis</span></h1>", unsafe_allow_html=True)
@@ -253,10 +226,12 @@ def check_password():
 # --- 3. MAIN DASHBOARD ---
 if check_password():
     
+    # --- SECURITY: HIDE TOP RIBBON FOR NON-ADMINS ---
     if st.session_state["username"] != "hx0335":
         st.markdown("""
             <style>
-                [data-testid="stToolbar"] {
+                /* Completely hide Manage App, Github, Pencil for Non-Admins */
+                [data-testid="stHeader"], [data-testid="stToolbar"] {
                     display: none !important;
                 }
             </style>
@@ -462,7 +437,7 @@ if check_password():
         start_ts = pd.to_datetime(start_date)
         end_ts = pd.to_datetime(end_date)
 
-    # --- TAB 1 ---
+    # --- TAB 1: Search & RAW Data ---
     with tab1:
         if not raw_data.empty:
             search_query = st.text_input("Search any keyword...")
@@ -471,11 +446,16 @@ if check_password():
                 search_df = filtered_data[mask]
                 display_df = search_df.copy()
                 for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
             else:
                 display_df = filtered_data.copy()
                 for col in date_cols: display_df[col] = display_df[col].dt.strftime('%Y-%m-%d')
-                st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
+            
+            # --- CSV DOWNLOAD BUTTON ---
+            colA, colB = st.columns([8, 2])
+            with colB:
+                st.download_button(label="📥 Download CSV", data=display_df.to_csv(index=False).encode('utf-8'), file_name="Raw_Data.csv", mime="text/csv", use_container_width=True)
+            
+            st.dataframe(display_df, use_container_width=True, height=min(750, (len(display_df) + 1) * 36 + 10))
             st.caption(f"Total Rows Fetched: {len(filtered_data)}")
         else:
             st.warning("Data failed to load. Please check your SQL Query or Database connection.")
@@ -562,7 +542,6 @@ if check_password():
                 sum_columns = ['Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Junk Overall', 'Connected 30 Sec SM', 'Connected 30 Sec Overall', 'Counselled SM', 'Counselled Overall', 'Offer SM', 'Offer Overall', 'Converted SM', 'Converted Overall', 'Booked Amount']
                 for col in sum_columns: total_row[col] = report_df[col].sum()
                 
-                # Concat Total row FIRST so it stays at index 0 (Top)
                 report_df = pd.concat([pd.DataFrame([total_row]), report_df], ignore_index=True)
                 
                 report_df.at[0, 'Junk SM %'] = report_df.at[0, 'Junk SM'] / report_df.at[0, 'Lead Received'] if report_df.at[0, 'Lead Received'] > 0 else 0
@@ -578,6 +557,12 @@ if check_password():
                     "Counselled SM %": "{:.2%}", "Offer To Counselled % SM": "{:.2%}", "Offer To Converted % SM": "{:.2%}",
                     "Counselled To Converted % SM": "{:.2%}", "Lead To Converted % SM": "{:.2%}"
                 })
+                
+                # --- CSV DOWNLOAD BUTTON ---
+                colA, colB = st.columns([8, 2])
+                with colB:
+                    st.download_button(label="📥 Download CSV", data=report_df.to_csv(index=False).encode('utf-8'), file_name="University_Analytics.csv", mime="text/csv", use_container_width=True)
+                
                 st.dataframe(styled_report, use_container_width=True, height=min(750, (len(report_df) + 1) * 36 + 10))
             else:
                 st.error("❌ End Date cannot be earlier than the Start Date!")
@@ -626,6 +611,12 @@ if check_password():
                     sum_columns_camp = ['Spend', 'Lead Received', 'Facebook', 'Google', 'LinkedIn', 'Junk SM', 'Connected 30 Sec SM', 'Counselled SM', 'Offer SM', 'Converted SM']
                     for col in sum_columns_camp: total_row_camp[col] = report_df_camp[col].sum()
                     report_df_camp = pd.concat([pd.DataFrame([total_row_camp]), report_df_camp], ignore_index=True)
+                    
+                    # --- CSV DOWNLOAD BUTTON ---
+                    colA, colB = st.columns([8, 2])
+                    with colB:
+                        st.download_button(label="📥 Download CSV", data=report_df_camp.to_csv(index=False).encode('utf-8'), file_name="Campaign_Analytics.csv", mime="text/csv", use_container_width=True)
+                    
                     st.dataframe(report_df_camp, use_container_width=True, height=min(750, (len(report_df_camp) + 1) * 36 + 10))
                 else: st.info("No Campaign Data found.")
 
@@ -633,7 +624,12 @@ if check_password():
     with tab4:
         if not raw_data.empty:
             today_ts = pd.to_datetime(datetime.date.today())
-            st.subheader(f"📅 Daily Leads Received (Today: {today_ts.strftime('%d %b %Y')})")
+            
+            # --- HEADER & DOWNLOAD BUTTON ALIGNMENT ---
+            colA, colB = st.columns([8, 2])
+            with colA:
+                st.subheader(f"📅 Daily Leads Received (Today: {today_ts.strftime('%d %b %Y')})")
+            
             df_today = filtered_data[filtered_data['CreatedOn_Date'] == today_ts]
             uni_mapping = {"ALLIANCE UNIVERSITY": "alliance", "AMITY UNIVERSITY": "amity", "BHARATI VIDYAPEETH UNIVERSITY": "bharati", "DR. D Y PATIL UNIVERSITY": "patil", "GALGOTIAS UNIVERSITY": "galgotias", "GENERIC UNIVERSITY": "generic", "GLA UNIVERSITY": "gla", "LOVELY PROFESSIONAL UNIVERSITY": "lovely", "MANIPAL UNIVERSITY": "manipal", "NMIMS": "nmims", "SHOOLINI UNIVERSITY": "shoolini", "UTTARANCHAL UNIVERSITY": "uttaranchal"}
             daily_report_data = []
@@ -645,6 +641,10 @@ if check_password():
             sum_cols_daily = ["GOOGLE-DEVENDER", "META-DEVENDER", "GOOGLE INHOUSE", "META INHOUSE", "LINKEDIN INHOUSE", "TOTAL LEADS"]
             for col in sum_cols_daily: total_row_daily[col] = df_daily[col].sum()
             df_daily = pd.concat([pd.DataFrame([total_row_daily]), df_daily], ignore_index=True)
+            
+            with colB:
+                st.download_button(label="📥 Download CSV", data=df_daily.to_csv(index=False).encode('utf-8'), file_name="Daily_Leads.csv", mime="text/csv", use_container_width=True)
+            
             st.dataframe(df_daily, use_container_width=True, height=min(750, (len(df_daily) + 1) * 36 + 10))
 
     # --- TAB 5: ROAS DASHBOARD ---
@@ -729,6 +729,12 @@ if check_password():
                     roas_df.at[0, "Lead To Converted Overall %"] = roas_df.at[0, "Converted Overall"] / roas_df.at[0, "Lead Received"] if roas_df.at[0, "Lead Received"] > 0 else 0
                     
                     col_order = ["Source Tag", "Spends", "Lead Received", "CPL", "Converted SM", "Converted Overall", "Booked Amount", "Booked ROAS", "CAC", "Lead To Converted SM %", "Lead To Converted Overall %"]
+                    
+                    # --- CSV DOWNLOAD BUTTON ---
+                    colA, colB = st.columns([8, 2])
+                    with colB:
+                        st.download_button(label="📥 Download CSV", data=roas_df[col_order].to_csv(index=False).encode('utf-8'), file_name="ROAS_Dashboard.csv", mime="text/csv", use_container_width=True)
+                        
                     styled_roas = roas_df[col_order].style.format({"Spends": "{:.2f}", "CPL": "{:.2f}", "Booked Amount": "{:.2f}", "Booked ROAS": "{:.2f}", "CAC": "{:.2f}", "Lead To Converted SM %": "{:.2%}", "Lead To Converted Overall %": "{:.2%}"})
                     st.dataframe(styled_roas, use_container_width=True, height=min(750, (len(roas_df) + 1) * 36 + 10))
                 else: st.info("No data available for ROAS Dashboard in the selected date range.")
