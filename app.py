@@ -148,6 +148,13 @@ st.markdown("""
         margin-top: 1rem !important;
         margin-bottom: 1rem !important;
     }
+    
+    /* Fix to ensure the unhide (>) option remains visible after hiding sidebar */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        z-index: 9999 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
