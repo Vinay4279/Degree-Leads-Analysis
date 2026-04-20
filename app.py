@@ -9,17 +9,22 @@ st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout=
 
 st.markdown("""
 <style>
-    /* === HIDE DEFAULT STREAMLIT BUTTONS & MENU GLOBALLY === */
-    [data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
-    [data-testid="stToolbarActions"] { display: none !important; visibility: hidden !important; }
-    .stAppDeployButton { display: none !important; visibility: hidden !important; }
-    button[title="Manage app"] { display: none !important; visibility: hidden !important; }
-    [data-testid="manage-app-button"] { display: none !important; visibility: hidden !important; }
-    #MainMenu { display: none !important; visibility: hidden !important; }
-    footer { display: none !important; visibility: hidden !important; }
+    /* === RIGHT PORTION HIDE (Permanently Hide Top-Right & Bottom-Right Icons) === */
+    [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stToolbarActions"] { display: none !important; }
+    .stAppDeployButton { display: none !important; }
+    #MainMenu { display: none !important; }
+    button[title="Manage app"] { display: none !important; }
+    [data-testid="manage-app-button"] { display: none !important; }
     
-    /* Keep header background transparent but DO NOT hide it, so sidebar toggle button works */
-    header[data-testid="stHeader"] { background: transparent !important; }
+    /* === LEFT PORTION UNHIDE (Keep Sidebar Toggle Visible) === */
+    header[data-testid="stHeader"] {
+        background: transparent !important; /* Header ka background transparent rakhega */
+    }
+    [data-testid="collapsedControl"] {
+        display: flex !important; /* Sidebar open/close karne wala button active rakhega */
+        visibility: visible !important;
+    }
 
     /* Main Title Styling - Premium Gradient */
     .gradient-text {
