@@ -11,6 +11,27 @@ st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout=
 
 st.markdown("""
 <style>
+    /* === REMOVE STREAMLIT DEFAULT HEADER, FOOTER & MANAGE APP BUTTON === */
+    [data-testid="stHeader"] { 
+        display: none !important; 
+    }
+    [data-testid="stToolbar"] { 
+        display: none !important; 
+    }
+    #MainMenu { 
+        display: none !important; 
+    }
+    footer { 
+        display: none !important; 
+    }
+    /* To remove Streamlit Cloud Manage App badge */
+    .viewerBadge_container__1QSob,
+    .viewerBadge_link__1S137,
+    .viewerBadge_text__1JaDK,
+    .viewerBadge_container { 
+        display: none !important; 
+    }
+
     /* Main Title Styling - Premium Gradient */
     .gradient-text {
         background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
