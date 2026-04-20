@@ -9,6 +9,18 @@ st.set_page_config(page_title="Degree Leads Analysis", page_icon="🎓", layout=
 
 st.markdown("""
 <style>
+    /* === HIDE DEFAULT STREAMLIT BUTTONS & MENU GLOBALLY === */
+    [data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
+    [data-testid="stToolbarActions"] { display: none !important; visibility: hidden !important; }
+    .stAppDeployButton { display: none !important; visibility: hidden !important; }
+    button[title="Manage app"] { display: none !important; visibility: hidden !important; }
+    [data-testid="manage-app-button"] { display: none !important; visibility: hidden !important; }
+    #MainMenu { display: none !important; visibility: hidden !important; }
+    footer { display: none !important; visibility: hidden !important; }
+    
+    /* Keep header background transparent but DO NOT hide it, so sidebar toggle button works */
+    header[data-testid="stHeader"] { background: transparent !important; }
+
     /* Main Title Styling - Premium Gradient */
     .gradient-text {
         background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
