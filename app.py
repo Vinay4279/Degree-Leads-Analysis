@@ -250,6 +250,15 @@ def check_password():
             st.session_state["password_correct"] = False 
 
     if not st.session_state.get("password_correct"):
+        # LOGIN PAGE PAR RIGHT PORTION KISI USER KO SHOW NAHI HOGA
+        st.markdown("""
+            <style>
+                [data-testid="stToolbar"] {
+                    display: none !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
         # --- CENTER ALIGNED PREMIUM LOGIN PAGE UI (Form Used to hide "Press Enter") ---
         st.markdown("<br><br><br>", unsafe_allow_html=True) 
         
@@ -274,7 +283,18 @@ def check_password():
 # --- 3. MAIN DASHBOARD ---
 if check_password():
     
-    if st.session_state["username"] != "hx0335":
+    is_admin_user = st.session_state["username"] == "hx0335"
+
+    # RIGHT PORTION SIRF HX0335 KO SHOW HOGA
+    if is_admin_user:
+        st.markdown("""
+            <style>
+                [data-testid="stToolbar"] {
+                    display: flex !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+    else:
         st.markdown("""
             <style>
                 [data-testid="stToolbar"] {
